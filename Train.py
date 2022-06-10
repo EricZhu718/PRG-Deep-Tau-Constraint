@@ -13,7 +13,11 @@ from torch.utils.data import Dataset, DataLoader
 
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
+print(torch.cuda.is_available())
+print(device)
 
+
+# actual model:
 class Model(nn.Module):
     def __init__(self):
         super(Model,self).__init__()
@@ -45,7 +49,7 @@ class Model(nn.Module):
         self.layer8 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
                                     nn.BatchNorm2d(128),
                                     nn.ReLU())
-        self.fc1 = nn.Linear(128*16*16,1024)
+        self.fc1 = nn.Linear(240,1024)
         self.fc2 = nn.Linear(1024,8)
         self.fc3 = nn.Linear(8, 1)
         
@@ -58,27 +62,30 @@ class Model(nn.Module):
         out = self.layer6(out)
         out = self.layer7(out)
         out = self.layer8(out)
-        out = out.view(-1,128* 16* 16)
         out = self.fc1(out)
         out = self.fc2(out)
         out = self.fc3(out)
         return out
 
 
-batch_size = 32
+# datasets using visual dataset class from Dataset.py
+batch_size = 3
 TrainingData = VisualDataset(64) # generate 1024 images (set to 64 for testing)
 ValidationData = VisualDataset(64) # generate 64 images
 TestData = VisualDataset(64) # generate 64 images
 
-TrainLoader = DataLoader(TrainingData,batch_size)
-ValidationLoader = DataLoader(ValidationData,batch_size)
-TestLoader = DataLoader(TestData,batch_size)
+# add dataloaders to datasets
+TrainLoader = DataLoader(TrainingData, batch_size)
+ValidationLoader = DataLoader(ValidationData, batch_size)
+TestLoader = DataLoader(TestData, batch_size)
 
 
 # custom loss function,
-# the my_outputs is a tensor matrix with 1 column representing phi predictions from our NN
+# the my_outputs is a tensor matrix with only 1 column and it represents the phi predictions from our NN
 # deltas_and_times is a tensor matrix with 2 columns: the first one is double integral of acceleration, the second are the time values 
 def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
+    
+    
     my_outputs.reshape(my_outputs.size()[0], 1)
     deltas = deltas_and_times[:,0]
     deltas = deltas.reshape(deltas.size()[0], 1) # delta is a single column of values
@@ -91,21 +98,68 @@ def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output a
     transpose = torch.transpose(phi_and_time, 0, 1)
     product = torch.matmul(transpose, phi_and_time) # 2 by 2 matrix
     inverse = torch.inverse(product)
-
-    print(torch.matmul(inverse, transpose))
-    print(deltas)
     Z_and_Z_vel = torch.matmul(torch.matmul(inverse, transpose), deltas) # first entry is estimated Z(0), second is estimated Z'(0)
     
     residues = torch.sub(torch.matmul(phi_and_time, Z_and_Z_vel), deltas) # difference between predicted delta values and true delta values
 
-    return torch.norm(residues) # returns the norm of the residue vector
+    return torch.norm(residues)**2 # returns the norm of the residue vector (ie square all the terms and add them together)
 
+
+# example of the format for the tensors:
 sample_phi_outputs = torch.tensor([[0], [1], [2], [15], [10]], dtype = float)
 sample_deltas_and_times = torch.tensor([[1,2], [5,4], [4,6], [13, 20], [20, 10]], dtype = float)
-
-print(custom_loss(sample_phi_outputs, sample_deltas_and_times))
-
+print("sample loss output from sample loss inputs: " + str(custom_loss(sample_phi_outputs, sample_deltas_and_times)))
 
 
+
+# actual training portion
 epochs = 10
 criterion = custom_loss
+model = Model().to(device)
+optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
+
+for epoch in range(epochs):
+    print("epoch: " + str(epoch))
+    for i, data in enumerate(TrainLoader):
+        img_batches, accel_batches, time_batches, delta_accel_batches = data
+        for j in range(batch_size):
+            # for each data set in the batch
+            img_arr = img_batches[j]
+            accel_arr = accel_batches[j]
+            time_arr = time_batches[j]
+            delta_accel_arr = delta_accel_batches[j]
+
+            
+            print("i: " + str(i))
+            optimizer.zero_grad()
+            img_arr = img_arr.to(device)
+            # print(img_arr.shape)
+            # print(accel_arr.shape)
+            # print(time_arr.shape)
+            # print(delta_accel_arr.shape)
+
+            accel_arr = accel_arr.to(device)
+            time_arr = time_arr.to(device)
+            delta_accel_arr = delta_accel_arr.to(device)
+
+            phi_estimates = []
+            # print(img_arr.shape)
+
+            for k in range(1, len(img_arr)):
+                # print(img_arr[0].shape)
+                # print(img_arr[j].shape)
+                double_img = torch.stack((img_arr[0], img_arr[j]))
+                # print(double_img.shape)
+                double_img = double_img.permute(3,0,1,2)
+                # print(double_img.shape)
+                output = model(double_img.float())
+                phi_estimates.append(output)
+            
+            phi_estimates = torch.tensor(phi_estimates)
+            loss = criterion(phi_estimates)
+            loss.backward()
+            optimizer.step()
+            if (i+1) % len(TrainLoader) == 0:
+                print('Train Epoch: [{}/{}] [{}/{} ({:.0f}%)]\Mean Squared Error: {:.6f}'.format(
+                    epoch+1,epochs, i , len(TrainLoader),
+                    100. * i / len(TrainLoader), loss))

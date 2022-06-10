@@ -1,14 +1,15 @@
 import open3d as o3d
 import numpy as np
 from time import time
-import rosbag
 from scipy.spatial.transform import Rotation as Rot
 import cv2
 import math
 import matplotlib.pyplot as plt
 import os
 
-def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/50, max_time = 5):
+# function outputs images, acceleration, time, and delta accel at each frame as a 2D list. The function is
+# called in the Dataset.py file, namely the custom dataset class uses it when it's outputing data during training
+def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/10, max_time = 5):
 
     # helper function for finding orientation
     def get_rot(pos1,pos2):
@@ -19,12 +20,12 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         return R_ii2
 
        # remove previously saved images
-    for filename in os.listdir("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/Saved_Images"):
-        print(filename)
-        os.remove("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/Saved_Images/" + filename)
+    # for filename in os.listdir("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/Saved_Images"):
+        # print(filename)
+        # os.remove("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/Saved_Images/" + filename)
 
 
-    o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
+    # o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
     source = o3d.io.read_triangle_mesh("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/PLY_Files/Cushion.ply") 
 
     # create array of camera positions, times, accelerations, and delta of acceleration
@@ -39,7 +40,7 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         accel_arr.append(camera_accel_func(time)[2])
         time_arr.append(time)
         delta_accel_arr.append(camera_pos[i][2] - camera_pos[0][2] - camera_vel_func(0)[2] * time)
-        print(camera_pos[i])
+        # print(camera_pos[i])
 
     camera_pos = np.array(camera_pos)
     
@@ -69,7 +70,7 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         delta_cam = camera_pos[i+1,:3] - camera_pos[i,:3]
             
         # get the rotation matrices
-        R_rig = get_rot(camera_pos[i,:],camera_pos[i+1,:])
+        R_rig = get_rot(camera_pos[i,:], camera_pos[i+1,:])
         
         # find the 4 by 4 camera transition matrix
         trans_rigv = np.row_stack((np.column_stack((R_rig, np.array(delta_cam))), np.array([0,0,0,1])))
@@ -89,10 +90,10 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Info)
     
     
-    img_arr = np.array(img_arr)
+    img_arr = np.array(img_arr, dtype=float)
     img_arr = np.uint8(img_arr * 255)
-    accel_arr = np.array(accel_arr)
-    time_arr = np.array(time_arr)
+    accel_arr = np.array(accel_arr, dtype=float)
+    time_arr = np.array(time_arr, dtype=float)
     delta_accel_arr = np.array(delta_accel_arr)
 
     return [img_arr, accel_arr, time_arr, delta_accel_arr]
@@ -100,7 +101,7 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
 
 if __name__ == '__main__':
     def pos(time):
-        return [50 * math.sin(time), 50 * math.cos(time),  -12 * time**2 - 400, 0, 0, 0, 1]
+        return [50 * math.sin(time), 50 * math.cos(time),  -12 * time**2 - 100, 0, 0, 0, 1]
     
     def vel(time):
         return [50 * math.cos(time), -50 * math.sin(time),  -24 * time, 0, 0, 0, 1]

@@ -13,6 +13,8 @@ import torch
 
 from Open_3D_Renderings import get_sim_data
 
+
+# This custom dataset class outputs all the information needed to train the model. 
 class VisualDataset(Dataset):
     data = []
     size = 0

@@ -92,7 +92,7 @@ def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output a
     times = deltas_and_times[:,1]
     times = times.reshape(times.size()[0], 1) # times is a single column of values
 
-    phi_and_time = torch.cat((torch.sub(my_outputs, 1.0), times), 1) # make a matrix where first column is phi-1, second column is time
+    phi_and_time = torch.cat((torch.sub(my_outputs, 1.0), torch.multiply(times, -1)), 1) # make a matrix where first column is phi-1, second column is -time
 
     # solve the least squares for Z(0) and Z'(0)
     transpose = torch.transpose(phi_and_time, 0, 1)
@@ -105,7 +105,7 @@ def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output a
     return torch.norm(residues)**2 # returns the norm of the residue vector (ie square all the terms and add them together)
 
 
-# example of the format for the tensors:
+# example of the format for the tensors for the loss function:
 sample_phi_outputs = torch.tensor([[0], [1], [2], [15], [10]], dtype = float)
 sample_deltas_and_times = torch.tensor([[1,2], [5,4], [4,6], [13, 20], [20, 10]], dtype = float)
 print("sample loss output from sample loss inputs: " + str(custom_loss(sample_phi_outputs, sample_deltas_and_times)))
@@ -154,7 +154,6 @@ for epoch in range(epochs):
                 # print(double_img.shape)
                 output = model(double_img.float())
                 phi_estimates.append(output)
-            
             phi_estimates = torch.tensor(phi_estimates)
             loss = criterion(phi_estimates)
             loss.backward()

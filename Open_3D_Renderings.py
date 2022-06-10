@@ -9,7 +9,7 @@ import os
 
 # function outputs images, acceleration, time, and delta accel at each frame as a 2D list. The function is
 # called in the Dataset.py file, namely the custom dataset class uses it when it's outputing data during training
-def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/10, max_time = 5):
+def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/3, max_time = 2):
 
     # helper function for finding orientation
     def get_rot(pos1,pos2):
@@ -18,11 +18,6 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         R_voi2 = np.linalg.inv(R_ovi2)
         R_ii2 = R_ovi@R_voi2
         return R_ii2
-
-       # remove previously saved images
-    # for filename in os.listdir("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/Saved_Images"):
-        # print(filename)
-        # os.remove("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/Saved_Images/" + filename)
 
 
     # o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)

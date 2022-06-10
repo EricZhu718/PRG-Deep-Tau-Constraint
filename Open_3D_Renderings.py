@@ -9,7 +9,7 @@ import os
 
 # function outputs images, acceleration, time, and delta accel at each frame as a 2D list. The function is
 # called in the Dataset.py file, namely the custom dataset class uses it when it's outputing data during training
-def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/3, max_time = 2):
+def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/10, max_time = 5):
 
     # helper function for finding orientation
     def get_rot(pos1,pos2):

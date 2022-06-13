@@ -7,9 +7,13 @@ import math
 import matplotlib.pyplot as plt
 import os
 
+from torch import scalar_tensor
+
 # function outputs images, acceleration, time, and delta accel at each frame as a 2D list. The function is
 # called in the Dataset.py file, namely the custom dataset class uses it when it's outputing data during training
-def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/10, max_time = 5):
+def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/10, max_time = 5, scale_factor = 0.5):
+
+
 
     # helper function for finding orientation
     def get_rot(pos1,pos2):
@@ -58,6 +62,15 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
     vis.update_renderer() # update
 
     img_arr = []
+    image = np.asarray(vis.capture_screen_float_buffer())
+    # print(image)
+    # print("original image shape: " + str(image.shape))
+    image = np.array(image, dtype=float)
+    image = np.uint16(image * 255)
+    image = cv2.resize(image,[int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)], interpolation = cv2.INTER_AREA)
+    # print("resized image shape: " + str(image.shape))
+    # image = np.asarray(image)
+    img_arr.append(image)
 
     for i in range(camera_pos.shape[0]-1):
         
@@ -80,13 +93,17 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         # vis.capture_screen_image("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/Saved_Images/frame" + str(i) + ".png")
 
         image = np.asarray(vis.capture_screen_float_buffer())
+        image = np.array(image, dtype=float)
+        image = np.uint16(image * 255)
+        image = cv2.resize(image,[int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)], interpolation = cv2.INTER_AREA)
+        # image = np.asarray(image)
         img_arr.append(image)
     vis.destroy_window()
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Info)
     
     
-    img_arr = np.array(img_arr, dtype=float)
-    img_arr = np.uint8(img_arr * 255)
+    # img_arr = np.array(img_arr, dtype=float)
+    img_arr = np.uint8(img_arr)
     accel_arr = np.array(accel_arr, dtype=float)
     time_arr = np.array(time_arr, dtype=float)
     delta_accel_arr = np.array(delta_accel_arr)
@@ -115,10 +132,10 @@ if __name__ == '__main__':
     print(data[3])
 
     print()
-    # for frame in frames:
-        # print(type(frame))
-        # plt.imshow(frame)
-        # plt.show()
+    for frame in frames:
+        print(type(frame))
+        plt.imshow(frame)
+        plt.show()
     
 
 

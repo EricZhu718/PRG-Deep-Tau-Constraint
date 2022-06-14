@@ -11,9 +11,7 @@ from torch import scalar_tensor
 
 # function outputs images, acceleration, time, and delta accel at each frame as a 2D list. The function is
 # called in the Dataset.py file, namely the custom dataset class uses it when it's outputing data during training
-def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/10, max_time = 5, scale_factor = 0.5):
-
-
+def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step = 1/10, max_time = 5, scale_factor = 0.25):
 
     # helper function for finding orientation
     def get_rot(pos1,pos2):
@@ -23,9 +21,8 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         R_ii2 = R_ovi@R_voi2
         return R_ii2
 
-
     # o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Debug)
-    source = o3d.io.read_triangle_mesh("C:/Users/ezhu2/Documents/GitHub/Perception-and-Robotics-Group/PLY_Files/Cushion.ply") 
+    source = o3d.io.read_triangle_mesh("./Cushion.ply") 
 
     # create array of camera positions, times, accelerations, and delta of acceleration
     camera_pos = [] # z direction
@@ -67,9 +64,10 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
     # print("original image shape: " + str(image.shape))
     image = np.array(image, dtype=float)
     image = np.uint16(image * 255)
-    image = cv2.resize(image,[int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)], interpolation = cv2.INTER_AREA)
-    # print("resized image shape: " + str(image.shape))
-    # image = np.asarray(image)
+    image = cv2.resize(image,(int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)), interpolation = cv2.INTER_AREA)
+    print("resized image shape: " + str(image.shape))
+    image = np.asarray(image)
+    # print(image.shape)
     img_arr.append(image)
 
     for i in range(camera_pos.shape[0]-1):
@@ -95,8 +93,10 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         image = np.asarray(vis.capture_screen_float_buffer())
         image = np.array(image, dtype=float)
         image = np.uint16(image * 255)
-        image = cv2.resize(image,[int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)], interpolation = cv2.INTER_AREA)
+        image = cv2.resize(image,(int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)), interpolation = cv2.INTER_AREA)
         # image = np.asarray(image)
+        # print("Printing image shape")
+        # print(image.shape)
         img_arr.append(image)
     vis.destroy_window()
     o3d.utility.set_verbosity_level(o3d.utility.VerbosityLevel.Info)

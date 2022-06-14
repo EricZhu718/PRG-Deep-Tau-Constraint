@@ -10,50 +10,132 @@ import torch.nn.functional as F
 import torch.optim as optim
 from Dataset import VisualDataset
 from torch.utils.data import Dataset, DataLoader
+import time
+import torchvision.transforms as transforms
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 print(torch.cuda.is_available())
 print(device)
 
+
+
 # actual model:
 class Model(nn.Module):
     def __init__(self):
         super(Model,self).__init__()
-        self.layer1 = nn.Sequential(nn.Conv2d(2,64,3,padding=1),
+        
+        ###################
+        ## Test Network ### #Shallow network for testing
+        ###################
+        
+        self.layer1 = nn.Sequential(nn.Conv2d(2,32,3,padding=1),
+                                    nn.BatchNorm2d(32),
+                                    nn.ReLU())                     
+        self.layer2 = nn.Sequential(nn.Conv2d(32,32,3,padding=1),
+                                    nn.BatchNorm2d(32),
+                                    nn.ReLU(),
+                                    nn.MaxPool2d(2))
+        self.layer3 = nn.Sequential(nn.Conv2d(32,32,3,padding=1),
+                                    nn.BatchNorm2d(32),
+                                    nn.ReLU())
+        self.layer4 = nn.Sequential(nn.Conv2d(32,32,3,padding=1),
+                                    nn.BatchNorm2d(32),
+                                    nn.ReLU(),
+                                    nn.MaxPool2d(2))
+        self.layer5 = nn.Sequential(nn.Conv2d(32,64,3,padding=1),
                                     nn.BatchNorm2d(64),
-                                    nn.ReLU())                            
-        self.layer2 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+                                    nn.ReLU())
+        self.layer6 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
                                     nn.BatchNorm2d(64),
                                     nn.ReLU(),
                                     nn.MaxPool2d(2))
-        self.layer3 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+        self.layer7 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
                                     nn.BatchNorm2d(64),
                                     nn.ReLU())
-        self.layer4 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+        self.layer8 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
                                     nn.BatchNorm2d(64),
                                     nn.ReLU(),
                                     nn.MaxPool2d(2))
-        self.layer5 = nn.Sequential(nn.Conv2d(64,128,3,padding=1),
-                                    nn.BatchNorm2d(128),
-                                    nn.ReLU())        
-        self.layer6 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
-                                    nn.BatchNorm2d(128),
-                                    nn.ReLU(),
-                                    nn.MaxPool2d(2))
-        self.layer7 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
-                                    nn.BatchNorm2d(128),
-                                    nn.ReLU())
-        self.layer8 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
-                                    nn.BatchNorm2d(128),
-                                    nn.ReLU())
-        self.fc1 = nn.Linear(3*128*131*240,1024)
+        # self.layer7 = nn.Sequential(nn.Conv2d(64,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU())
+        
+        # self.layer3 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+        #                             nn.BatchNorm2d(64),
+        #                             nn.ReLU())
+        # self.layer4 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+        #                             nn.BatchNorm2d(64),
+        #                             nn.ReLU(),
+        #                             nn.MaxPool2d(2))
+        # self.layer5 = nn.Sequential(nn.Conv2d(64,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU())        
+        # self.layer6 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU(),
+        #                             nn.MaxPool2d(2))
+        # self.layer7 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU())
+        # self.layer8 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU())
+        
+        self.fc1 = nn.Linear(42240,1024)
         self.relu1 = nn.ReLU()
-        self.fc2 = nn.Linear(1024,8)
+        self.fc2 = nn.Linear(1024,256)
         self.relu2 = nn.ReLU()
-        self.fc3 = nn.Linear(8, 1)
+        self.fc3 = nn.Linear(256, 64)
         self.relu3 = nn.ReLU()
+        self.fc4 = nn.Linear(64, 16)
+        self.relu4 = nn.ReLU()
+        self.fc5 = nn.Linear(16, 1)
+        self.relu5 = nn.ReLU()
+        
+        ######################
+        ## Original Network###
+        ######################
+        
+        # self.layer1 = nn.Sequential(nn.Conv2d(2,64,3,padding=1),
+        #                             nn.BatchNorm2d(64),
+        #                             nn.ReLU())                            
+        # self.layer2 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+        #                             nn.BatchNorm2d(64),
+        #                             nn.ReLU(),
+        #                             nn.MaxPool2d(2))
+        # self.layer3 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+        #                             nn.BatchNorm2d(64),
+        #                             nn.ReLU())
+        # self.layer4 = nn.Sequential(nn.Conv2d(64,64,3,padding=1),
+        #                             nn.BatchNorm2d(64),
+        #                             nn.ReLU(),
+        #                             nn.MaxPool2d(2))
+        # self.layer5 = nn.Sequential(nn.Conv2d(64,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU())        
+        # self.layer6 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU(),
+        #                             nn.MaxPool2d(2))
+        # self.layer7 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU())
+        # self.layer8 = nn.Sequential(nn.Conv2d(128,128,3,padding=1),
+        #                             nn.BatchNorm2d(128),
+        #                             nn.ReLU())
+        # self.fc1 = nn.Linear(3*128*131*240,1024)
+        # self.relu1 = nn.ReLU()
+        # self.fc2 = nn.Linear(1024,8)
+        # self.relu2 = nn.ReLU()
+        # self.fc3 = nn.Linear(8, 1)
+        # self.relu3 = nn.ReLU()
 
     def forward(self,x):
+        
+        ###################
+        ## Test Network ### # Shallow network for testing
+        ###################
+        print("Hi")
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -63,14 +145,40 @@ class Model(nn.Module):
         out = self.layer7(out)
         out = self.layer8(out)
         # print(out.shape)
-        out = out.view(-1,3*128*131*240)
+        out = out.view(-1,42240)
         out = self.fc1(out)
         out = self.relu1(out)
         out = self.fc2(out)
         out = self.relu2(out)
         out = self.fc3(out)
         out = self.relu3(out)
+        out = self.fc4(out)
+        out = self.relu4(out)
+        out = self.fc5(out)
+        out = self.relu5(out)
         return out
+        
+        ######################
+        ## Original Network###
+        ######################
+        
+        # out = self.layer1(x)
+        # out = self.layer2(out)
+        # out = self.layer3(out)
+        # out = self.layer4(out)
+        # out = self.layer5(out)
+        # out = self.layer6(out)
+        # out = self.layer7(out)
+        # out = self.layer8(out)
+        # # print(out.shape)
+        # out = out.view(-1,3*128*131*240)
+        # out = self.fc1(out)
+        # out = self.relu1(out)
+        # out = self.fc2(out)
+        # out = self.relu2(out)
+        # out = self.fc3(out)
+        # out = self.relu3(out)
+        # return out
 
 # datasets using visual dataset class from Dataset.py
 batch_size = 3
@@ -134,10 +242,10 @@ for epoch in range(epochs):
             time_arr = time_batches[j]
             delta_accel_arr = delta_accel_batches[j]
 
-            print(img_arr.shape)
-            print(accel_arr.shape)
-            print(time_arr.shape)
-            print(delta_accel_arr.shape)
+            # print(img_arr.shape)
+            # print(accel_arr.shape)
+            # print(time_arr.shape)
+            # print(delta_accel_arr.shape)
 
             delta_accel_arr_reshape = torch.reshape(delta_accel_arr, (-1,1))
             time_arr_reshape = torch.reshape(time_arr, (-1,1))
@@ -160,19 +268,36 @@ for epoch in range(epochs):
             # print(img_arr.shape)
     #         break
     #     break
-    # break
+    # break 
+            a = 0
+            start_time = time.time()
             for k in range(1, len(img_arr)):
-                
+                if a == 10:
+                    break
+                print("a = " + str(a))
             #     # print(img_arr[j].shape)
-                double_img = torch.stack((img_arr[0], img_arr[k]))
-                print(k)
+                # img1 = transforms.ToTensor()(img_arr[0])
+                # img2 = transforms.ToTensor()(img_arr[k])
+                
+                double_img = torch.stack((img_arr[0], img_arr[k]),0)
+                
+                # print('Image_shape')
+                # print(double_img.shape)
+                
                 # print(double_img.shape)
                 double_img = double_img.permute(3,0,1,2)
             #     # print(double_img.shape)
+                
                 output = model(double_img.float())
+                end_time = time.time()
+                print("Time to run the code" +" : " + str(end_time-start_time))
+                     
                 phi_estimates.append(output)
-            phi_estimates = torch.tensor(phi_estimates)
-            loss = criterion(phi_estimates, deltas_and_time[1:])
+                
+                a += 1
+                
+            # phi_estimates = torch.tensor(phi_estimates)
+            # loss = criterion(phi_estimates, deltas_and_time[1:])
             break
         break
     break
@@ -183,3 +308,4 @@ for epoch in range(epochs):
             #     print('Train Epoch: [{}/{}] [{}/{} ({:.0f}%)]\Mean Squared Error: {:.6f}'.format(
             #         epoch+1,epochs, i , len(TrainLoader),
             #         100. * i / len(TrainLoader), loss))
+

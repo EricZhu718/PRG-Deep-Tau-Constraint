@@ -28,7 +28,7 @@ class Model(nn.Module):
         ## Test Network ### #Shallow network for testing
         ###################
         
-        self.layer1 = nn.Sequential(nn.Conv2d(2,32,3,padding=1),
+        self.layer1 = nn.Sequential(nn.Conv2d(6,32,3,padding=1),
                                     nn.BatchNorm2d(32),
                                     nn.ReLU())                     
         self.layer2 = nn.Sequential(nn.Conv2d(32,32,3,padding=1),
@@ -81,7 +81,7 @@ class Model(nn.Module):
         #                             nn.BatchNorm2d(128),
         #                             nn.ReLU())
         
-        self.fc1 = nn.Linear(42240,1024)
+        self.fc1 = nn.Linear(14080,1024)
         self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(1024,256)
         self.relu2 = nn.ReLU()
@@ -145,7 +145,7 @@ class Model(nn.Module):
         out = self.layer7(out)
         out = self.layer8(out)
         # print(out.shape)
-        out = out.view(-1,42240)
+        out = out.view(-1,14080)
         out = self.fc1(out)
         out = self.relu1(out)
         out = self.fc2(out)
@@ -276,23 +276,20 @@ for epoch in range(epochs):
                     break
                 print("a = " + str(a))
             #     # print(img_arr[j].shape)
-                # img1 = transforms.ToTensor()(img_arr[0])
-                # img2 = transforms.ToTensor()(img_arr[k])
                 
-                double_img = torch.stack((img_arr[0], img_arr[k]),0)
                 
-                # print('Image_shape')
-                # print(double_img.shape)
+                double_img = torch.cat((img_arr[0], img_arr[k]),2)
                 
-                # print(double_img.shape)
-                double_img = double_img.permute(3,0,1,2)
-            #     # print(double_img.shape)
+                double_img = torch.reshape(double_img,(1,double_img.shape[2],double_img.shape[0], double_img.shape[1]))
                 
-                output = model(double_img.float())
-                end_time = time.time()
-                print("Time to run the code" +" : " + str(end_time-start_time))
-                     
-                phi_estimates.append(output)
+                # double_img = double_img.permute(3,0,1,2)
+                
+                print(double_img.float())
+                # output = model(double_img.float())
+                # end_time = time.time()
+                # print("Time to run the code" +" : " + str(end_time-start_time))
+                break     
+                # phi_estimates.append(output)
                 
                 a += 1
                 

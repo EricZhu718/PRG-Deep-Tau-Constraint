@@ -64,10 +64,11 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
     # print("original image shape: " + str(image.shape))
     image = np.array(image, dtype=float)
     image = np.uint16(image * 255)
-    image = cv2.resize(image,(int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)), interpolation = cv2.INTER_AREA)
+    # image = cv2.resize(image,(int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)), interpolation = cv2.INTER_AREA)
+    image = cv2.resize(image,(128,128), interpolation = cv2.INTER_AREA)
     print("resized image shape: " + str(image.shape))
     image = np.asarray(image)
-    # print(image.shape)
+    print(image.shape)
     img_arr.append(image)
 
     for i in range(camera_pos.shape[0]-1):
@@ -93,7 +94,8 @@ def get_sim_data(camera_pos_func, camera_vel_func, camera_accel_func, time_step 
         image = np.asarray(vis.capture_screen_float_buffer())
         image = np.array(image, dtype=float)
         image = np.uint16(image * 255)
-        image = cv2.resize(image,(int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)), interpolation = cv2.INTER_AREA)
+        # image = cv2.resize(image,(int(image.shape[1]*scale_factor),int(image.shape[0]*scale_factor)), interpolation = cv2.INTER_AREA)
+        image = cv2.resize(image,(128,128), interpolation = cv2.INTER_AREA)
         # image = np.asarray(image)
         # print("Printing image shape")
         # print(image.shape)

@@ -11,7 +11,7 @@ import torch.optim as optim
 from Dataset import VisualDataset
 from torch.utils.data import Dataset, DataLoader
 import time
-# import torchvision.transforms as transforms
+import torchvision.transforms as transforms
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 print(torch.cuda.is_available())
@@ -81,7 +81,7 @@ class Model(nn.Module):
         #                             nn.BatchNorm2d(128),
         #                             nn.ReLU())
         
-        self.fc1 = nn.Linear(4096,1024)
+        self.fc1 = nn.Linear(14080,1024)
         self.relu1 = nn.ReLU()
         self.fc2 = nn.Linear(1024,256)
         self.relu2 = nn.ReLU()
@@ -135,7 +135,7 @@ class Model(nn.Module):
         ###################
         ## Test Network ### # Shallow network for testing
         ###################
-        # print("Hi")
+        print("Hi")
         out = self.layer1(x)
         out = self.layer2(out)
         out = self.layer3(out)
@@ -145,7 +145,7 @@ class Model(nn.Module):
         out = self.layer7(out)
         out = self.layer8(out)
         # print(out.shape)
-        out = out.view(-1,4096)
+        out = out.view(-1,14080)
         out = self.fc1(out)
         out = self.relu1(out)
         out = self.fc2(out)
@@ -196,17 +196,13 @@ TestLoader = DataLoader(TestData, batch_size)
 # deltas_and_times is a tensor matrix with 2 columns: the first one is double integral of acceleration, the second are the time values 
 def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
     print('Loss function input checking')
-    # print(deltas_and_times.shape)
+    print(deltas_and_times.shape)
     my_outputs.reshape(my_outputs.size()[0], 1)
     deltas = deltas_and_times[:,0]
     deltas = deltas.reshape(deltas.size()[0], 1) # delta is a single column of values
     times = deltas_and_times[:,1]
-    times = times.reshape(times.shape[0],1)
-    # print(times.shape)
-    # times = times.reshape(times.size()[0], 1) # times is a single column of values
+    times = times.reshape(times.size()[0], 1) # times is a single column of values
 
-    # print(torch.sub(my_outputs, 1.0).shape)
-    # print(torch.multiply(times, -1).shape)
     phi_and_time = torch.cat((torch.sub(my_outputs, 1.0), torch.multiply(times, -1)), 1) # make a matrix where first column is phi-1, second column is -time
 
     # solve the least squares for Z(0) and Z'(0)
@@ -216,9 +212,8 @@ def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output a
     Z_and_Z_vel = torch.matmul(torch.matmul(inverse, transpose), deltas) # first entry is estimated Z(0), second is estimated Z'(0)
     
     residues = torch.sub(torch.matmul(phi_and_time, Z_and_Z_vel), deltas) # difference between predicted delta values and true delta values
-    residues = torch.norm(residues)**2 
-    residues.requires_grad = True
-    return residues # returns the norm of the residue vector (ie square all the terms and add them together)
+
+    return torch.norm(residues)**2 # returns the norm of the residue vector (ie square all the terms and add them together)
 
 
 # # example of the format for the tensors for the loss function:
@@ -228,10 +223,10 @@ def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output a
 
 
 # actual training portion
-epochs = 100
+epochs = 10
 criterion = custom_loss
 model = Model().to(device)
-optimizer = optim.Adam(model.parameters(), lr=0.005)
+optimizer = optim.SGD(model.parameters(), lr=0.005, momentum=0.9)
 
 for epoch in range(epochs):
     print("epoch: " + str(epoch))
@@ -277,8 +272,9 @@ for epoch in range(epochs):
             a = 0
             start_time = time.time()
             for k in range(1, len(img_arr)):
-                
-                # print("a = " + str(a))
+                if a == 10:
+                    break
+                print("a = " + str(a))
             #     # print(img_arr[j].shape)
                 
                 
@@ -290,28 +286,23 @@ for epoch in range(epochs):
                 
                 # print(double_img.float())
                 output = model(double_img.float())
-                end_time = time.time()
-                # print("Time to run the code frame " + str(k) + " : " + str(end_time-start_time))
+                # end_time = time.time()
+                # print("Time to run the code" +" : " + str(end_time-start_time))
+                break     
+                # phi_estimates.append(output)
                 
-                phi_estimates.append(output)
-                # a += 1
-            # print(phi_estimates)
-            # print(len(phi_estimates))
-            phi_estimates = torch.reshape(torch.tensor(phi_estimates),(len(phi_estimates),1))
-
-            loss = criterion(phi_estimates, deltas_and_time[1:])
-            # loss = Variable(loss, requires_grad = True)
-            print(loss)
-            loss.backward()
-            optimizer.step()
-
-            # print("hi")
-
-
-            if (i+1) % len(TrainLoader) == 0:
-                print('Train Epoch: [{}/{}] [{}/{} ({:.0f}%)]\Mean Squared Error: {:.6f}'.format(
-                    epoch+1,epochs, i , len(TrainLoader),
-                    100. * i / len(TrainLoader), loss))
+                a += 1
+                
+            # phi_estimates = torch.tensor(phi_estimates)
+            # loss = criterion(phi_estimates, deltas_and_time[1:])
             break
+        break
     break
+
+            # loss.backward()
+            # optimizer.step()
+            # if (i+1) % len(TrainLoader) == 0:
+            #     print('Train Epoch: [{}/{}] [{}/{} ({:.0f}%)]\Mean Squared Error: {:.6f}'.format(
+            #         epoch+1,epochs, i , len(TrainLoader),
+            #         100. * i / len(TrainLoader), loss))
 

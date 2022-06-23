@@ -1,3 +1,4 @@
+from cgi import print_arguments
 from glob import glob
 from matplotlib import pyplot as plt
 import cv2
@@ -14,12 +15,15 @@ import time
 # from __future__ import print_function
 from torch.autograd import Variable
 # import torchvision.transforms as transforms
+import matplotlib.pyplot as plt
+import copy
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu") 
 print(torch.cuda.is_available())
 print(device)
 
-
+x = []
+y = []
 
 # actual model:
 class Model(nn.Module):
@@ -88,7 +92,7 @@ class Model(nn.Module):
         self.fc2 = nn.Linear(1024,64)
         self.relu2 = nn.Tanh()
         self.fc3 = nn.Linear(64, 1)
-        # self.relu3 = nn.Softmax()
+        self.relu3 = nn.Tanh()
         # self.fc4 = nn.Linear(64, 16)
         # self.relu4 = nn.ReLU()
         # self.fc5 = nn.Linear(16, 1)
@@ -199,11 +203,11 @@ TestLoader = DataLoader(TestData, batch_size)
 def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
     
     # my_outputs.requires_grad = True
-    return my_outputs[0]
+    # return my_outputs[0]
     
     ## Taking average of output 
-    avg = torch.mean(my_outputs)
-    avg.requires_grad = True
+    # avg = torch.mean(my_outputs)
+    # avg.requires_grad = True
     
     # print('Loss function input checking')
     # print(deltas_and_times.shape)
@@ -231,10 +235,10 @@ def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output a
     
     residues = torch.sub(torch.matmul(phi_and_time, Z_and_Z_vel), deltas) # difference between predicted delta values and true delta values
     residues = torch.norm(residues)**2 
-    residues.requires_grad = True
+    # residues.requires_grad = True
     # residues = [residues]
-    # return residues # returns the norm of the residue vector (ie square all the terms and add them together)
-    return avg
+    return residues # returns the norm of the residue vector (ie square all the terms and add them together)
+    # return avg
     # my_outputs.requires_grad = True
     # return my_outputs[0]
     
@@ -246,9 +250,11 @@ def custom_loss(my_outputs, deltas_and_times): # my_outputs are the phi output a
 # deltas_and_times is a tensor matrix with 2 columns: the first one is double integral of acceleration, the second are the time values 
 def loss_function(my_outputs, deltas_and_times): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
     
+    # return my_outputs[0]
+    
     # print('Loss function input checking')
     # print(deltas_and_times.shape)
-    my_outputs.reshape(my_outputs.size()[0], 1)
+    # my_outputs.reshape(my_outputs.size()[0], 1)
     deltas = deltas_and_times[:,0]
     deltas = deltas.reshape(deltas.size()[0], 1) # delta is a single column of values
     times = deltas_and_times[:,1]
@@ -257,7 +263,8 @@ def loss_function(my_outputs, deltas_and_times): # my_outputs are the phi output
     # times = times.reshape(times.size()[0], 1) # times is a single column of values
 
     # ## Taking average of output 
-    # avg = torch.mean(my_outputs)
+    # my_outputs.detach().numpy()
+    # avg = np.mean(my_outputs)
     # avg.requires_grad = True
     
     # print(torch.sub(my_outputs, 1.0).shape)
@@ -272,29 +279,29 @@ def loss_function(my_outputs, deltas_and_times): # my_outputs are the phi output
     
     residues = torch.sub(torch.matmul(phi_and_time, Z_and_Z_vel), deltas) # difference between predicted delta values and true delta values
     residues = torch.norm(residues)**2 
-    residues.requires_grad = True
+    # residues.requires_grad = True
     # residues = [residues]
-    # return residues # returns the norm of the residue vector (ie square all the terms and add them together)
-    return avg
+    return residues # returns the norm of the residue vector (ie square all the terms and add them together)
+    # return avg
     # my_outputs.requires_grad = True
     # return my_outputs[0]
 
 # # example of the format for the tensors for the loss function:
-# sample_phi_outputs = torch.tensor([[0], [1], [2], [15], [10]], dtype = float)
-# sample_deltas_and_times = torch.tensor([[1,2], [5,4], [4,6], [13, 20], [20, 10]], dtype = float)
-# print("sample loss output from sample loss inputs: " + str(custom_loss(sample_phi_outputs, sample_deltas_and_times)))
+sample_phi_outputs = torch.tensor([[0], [1], [2], [15], [10]], dtype = float)
+sample_deltas_and_times = torch.tensor([[1,2], [5,4], [4,6], [13, 20], [20, 10]], dtype = float)
+print("sample loss output from sample loss inputs: " + str(custom_loss(sample_phi_outputs, sample_deltas_and_times)))
 
 
 # actual training portion
 epochs = 200
 criterion = custom_loss
 model = Model().to(device)
-optimizer = optim.SGD(model.parameters(), lr=0.1)
+optimizer = optim.SGD(model.parameters(), lr=0.0000001, momentum=0.99)
 # for params in model.parameters():
 #     print(params.requires_grad)
 loss = torch.zeros(1)
 loss.requires_grad = True
-
+a = 0
 for epoch in range(epochs):
     print("epoch: " + str(epoch))
     for i, data in enumerate(TrainLoader):
@@ -347,34 +354,43 @@ for epoch in range(epochs):
                 # i += 1
             # phi_estimates[0] = abs(phi_estimates[0])
             # phi_estimates[0].backward()
-            
-            # phi_estimates = torch.reshape(torch.tensor(phi_estimates),(len(phi_estimates),1))
-            
+            # print(len(phi_estimates))
+            # print(phi_estimates)
+            phi_estimates = torch.reshape(torch.cat(phi_estimates),(len(phi_estimates),1))
+            # print(phi_estimates)
             # phi_estimates[0] = abs(phi_estimates[0])
-            phi_estimates.requires_grad = True
+            # phi_estimates.requires_grad = True
             # # phi_estimates[0] = abs(phi_estimates[0])
             # phi_estimates[0].backward()
             
             # print("Phi")
-            print(phi_estimates)
+            # print(phi_estimates)
             loss = custom_loss(phi_estimates, deltas_and_time[1:])
-            # print('loss')
+            print("training number: " + str(a) + "  "+ 'loss: ' + str(loss))
             # print(model.)
             # loss.retain_grad()
             loss.backward()
-
+            # print(loss)
             # print('hi')       
             # loss.register_hook(lambda grad: print(grad))
             # print(model.fc3.weight)
- 
+            # print_loss = copy.deepcopy(loss)
+            # print_loss.numpy()
             optimizer.step()
-
+            # x.append(i)
+            # y.append(print_loss)
+            # plt.plot(x, y, c = 'green')
+            # plt.xlabel('No of times NN tranined with same video')
+            # plt.ylabel('Loss')
+            # plt.title("loss vs No of time NN trained")
+            # plt.show()      
+            a += 1
             # print(model.fc3.weight)
-            
+
             # loss.register_hook(lambda grad: print(grad))
             
-            if (i+1) % len(TrainLoader) == 0:
-                print('Train Epoch: [{}/{}] [{}/{} ({:.0f}%)]\Mean Squared Error: {:.6f}'.format(
-                    epoch+1,epochs, i , len(TrainLoader),
-                    100. * i / len(TrainLoader), loss))
+            # if (i+1) % len(TrainLoader) == 0:
+            #     print('Train Epoch: [{}/{}] [{}/{} ({:.0f}%)]\Mean Squared Error: {:.6f}'.format(
+            #         epoch+1,epochs, i , len(TrainLoader),
+            #         100. * i / len(TrainLoader), loss))
 

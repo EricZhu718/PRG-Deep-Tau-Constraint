@@ -9,7 +9,6 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.utils.data import Dataset, DataLoader
-import math
 from time import time
 from scipy.spatial.transform import Rotation as Rot
 import math

@@ -11,4 +11,4 @@ import torch.optim as optim
 from Dataset import VisualDataset
 from torch.utils.data import Dataset, DataLoader
 
-print(torch.cuda.is_available())
+# print(torch.cuda.is_available())

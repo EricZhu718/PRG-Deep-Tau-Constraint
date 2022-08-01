@@ -24,7 +24,7 @@ import sys
 import torch
 import warnings
 
-from data import SplineDataset, load_data_set
+from data import load_data_set
 from model import Model
 warnings.filterwarnings('ignore')
 
@@ -45,18 +45,18 @@ import os
 
 # access cuda
 if torch.cuda.is_available():
-    device = torch.device("cuda:0")
+    device = torch.device('cuda:0')
     torch.cuda.set_device(device)
 else:
-    device = torch.device("cpu")
-print(device)
+    device = torch.device('cpu')
+print('device: ' + str(device))
 
 
 # custom loss function,
 # the my_outputs is a tensor matrix with only 1 column and it represents the phi predictions from our NN
 # deltas_and_times is a tensor matrix with 2 columns: the first one is double integral of acceleration, the second are the time values 
 def custom_loss(phi_hat, deltas_and_times): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
-    # print("hi")
+    # print('hi')
     # print(my_outputs.size())
     phi_hat.reshape(phi_hat.size()[0], 1)
     deltas = deltas_and_times[:,0]
@@ -70,18 +70,18 @@ def custom_loss(phi_hat, deltas_and_times): # my_outputs are the phi output appr
 
     # solve the least squares for Z(0) and Z'(0)
     transpose = torch.transpose(phi_and_time, 0, 1)
-    # print("transpose: ")
+    # print('transpose: ')
     # print(transpose)
     product = torch.matmul(transpose, phi_and_time) # 2 by 2 matrix
-    # print("product: ")
+    # print('product: ')
     # print(product)   
     inverse = torch.inverse(product)
-    # print("inverse")
+    # print('inverse')
     # print(inverse)
     Z_and_Z_vel = torch.matmul(torch.matmul(inverse, transpose), deltas) # first entry is estimated Z(0), second is estimated Z'(0)
-    # print("Z_and_Z_vel")
+    # print('Z_and_Z_vel')
     # print(Z_and_Z_vel)
-    # print("Hi")
+    # print('Hi')
     # print(Z_and_Z_vel)
 
     # Z_and_Z_vel_actual = torch.tensor([[np.double(3.0)],[np.double(0.0)]]).to(device)
@@ -122,11 +122,13 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
         # Validation dataloader
         if ValidationData is None:
-            ValidationData = load_data_set('/home/tau/Video_Datasets/250Videos100Frames') # generate videos for validation
+            ValidationData = load_data_set('Video_Datasets/250Videos100Frames') # generate videos for validation
         ValidationLoader = DataLoader(ValidationData, batch_size_val)
 
         # set up directory for the run
-        path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+        path = '../deep_tau_runs/'
+        # path = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/deep_tau_runs/'
+        path += str(datetime.datetime.now()).replace(' ', '_').replace(':', '_') + '/'
         os.mkdir(path)
         os.mkdir(path + 'validation_set')
         os.mkdir(path + 'training_set')
@@ -135,12 +137,12 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
         # set up tensorboard writer
         writer = SummaryWriter(log_dir = path + 'tensorboard_dir')
-        writer.add_text("training params:", 'lr: ' + str(Learning_rate) + '\nframes: ' + str(Frames) +'\nVideos: ' + str(Training_Video_Num)+'\nBatch size: ' + str(batch_size_train))
+        writer.add_text('training params:', 'lr: ' + str(Learning_rate) + '\nframes: ' + str(Frames) +'\nVideos: ' + str(Training_Video_Num)+'\nBatch size: ' + str(batch_size_train))
         print('Command to view tensorboard is:\ntensorboard --logdir ' + writer.log_dir)
         counter= 0
 
-        validation_file = open(path + "validation.txt","w")
-        training_file = open(path + "training.txt","w")
+        validation_file = open(path + 'validation.txt','w')
+        training_file = open(path + 'training.txt','w')
 
 
         # training loop
@@ -217,6 +219,8 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
                 sum_of_train_loss += batch_loss.item()
 
+                
+
             # One epoch of validation loop
             for i, data in enumerate(ValidationLoader):
                 
@@ -245,44 +249,50 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
     training_file.close()
 
 if __name__ == '__main__':
-    
-    # train(TrainingData = load_data_set("../Video_Datasets/1000Videos200Frames/"),batch_size_train= 1)
-    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos150Frames/"), batch_size_train=1)
-    train(TrainingData = load_data_set( "../Video_Datasets/750Videos150Frames/"), batch_size_train=1)
-    train(TrainingData = load_data_set( "../Video_Datasets/500Videos150Frames/"), batch_size_train=1)
-    train(TrainingData = load_data_set( "../Video_Datasets/250Videos150Frames/"), batch_size_train=1)
-    train(TrainingData = load_data_set( "../Video_Datasets/100Videos150Frames/"), batch_size_train=1)
-    train(TrainingData = load_data_set ("../Video_Datasets/50Videos150Frames/"), batch_size_train=1)
-    train(TrainingData = load_data_set ("../Video_Datasets/20Videos150Frames/"), batch_size_train=1)
+    # os.mkdir('C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/deep_tau_runs/2/')
 
-    train(TrainingData = load_data_set ("../Video_Datasets/1000Videos100Frames/"), batch_size_train=2)
-    train(TrainingData = load_data_set( "../Video_Datasets/750Videos100Frames/"), batch_size_train=2)
-    train(TrainingData = load_data_set( "../Video_Datasets/500Videos100Frames/"), batch_size_train=2)
-    train(TrainingData = load_data_set( "../Video_Datasets/250Videos100Frames/"), batch_size_train=2)
-    train(TrainingData = load_data_set( "../Video_Datasets/100Videos100Frames/"), batch_size_train=2)
-    train(TrainingData = load_data_set( "../Video_Datasets/50Videos100Frames/"), batch_size_train=2)
-    train(TrainingData = load_data_set( "../Video_Datasets/20Videos100Frames/"), batch_size_train=2)
 
-    # train(TrainingData = load_data_set( "../Video_Datasets/1000Videos50Frames/"), batch_size_train=4)
-    # train(TrainingData = load_data_set( "../Video_Datasets/750Videos50Frames/"), batch_size_train=4)
-    # train(TrainingData = load_data_set( "../Video_Datasets/500Videos50Frames/"), batch_size_train=4)
-    # train(TrainingData = load_data_set( "../Video_Datasets/250Videos50Frames/"), batch_size_train=4)
-    # train(TrainingData = load_data_set( "../Video_Datasets/100Videos50Frames/"), batch_size_train=4)
-    # train(TrainingData = load_data_set("../Video_Datasets/50Videos50Frames/"), batch_size_train=4)
-    # train(TrainingData = load_data_set("../Video_Datasets/20Videos50Frames/"), batch_size_train=4)
 
-    # train(TrainingData = load_data_set( "../Video_Datasets/1000Videos20Frames/"), batch_size_train=8)
-    # train(TrainingData = load_data_set( "../Video_Datasets/750Videos20Frames/"), batch_size_train=8)
-    # train(TrainingData = load_data_set( "../Video_Datasets/500Videos20Frames/"), batch_size_train=8)
-    # train(TrainingData = load_data_set( "../Video_Datasets/250Videos20Frames/"), batch_size_train=8)
-    # train(TrainingData = load_data_set( "../Video_Datasets/100Videos20Frames/"), batch_size_train=8)
-    # train(TrainingData = load_data_set("../Video_Datasets/50Videos20Frames/"), batch_size_train=8)
-    # train(TrainingData = load_data_set("../Video_Datasets/20Videos20Frames/"), batch_size_train=8)
+    # dataset_directory = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/Video_Datasets/'
+    dataset_directory = '../Video_Datasets/'
 
-    # train(TrainingData = load_data_set( "../Video_Datasets/1000Videos10Frames/"), batch_size_train=16)
-    # train(TrainingData = load_data_set( "../Video_Datasets/750Videos10Frames/"), batch_size_train=16)
-    # train(TrainingData = load_data_set( "../Video_Datasets/500Videos10Frames/"), batch_size_train=16)
-    # train(TrainingData = load_data_set( "../Video_Datasets/250Videos10Frames/"), batch_size_train=16)
-    # train(TrainingData = load_data_set( "../Video_Datasets/100Videos10Frames/"), batch_size_train=16)
-    # train(TrainingData = load_data_set("../Video_Datasets/50Videos10Frames/"), batch_size_train=16)
-    # train(TrainingData = load_data_set("../Video_Datasets/20Videos10Frames/"), batch_size_train=16)    
+    # train(TrainingData = load_data_set(dataset_directory + '1000Videos200Frames/'),batch_size_train= 1)
+    train(TrainingData = load_data_set( dataset_directory + '1000Videos150Frames/'), batch_size_train=1)
+    train(TrainingData = load_data_set( dataset_directory + '750Videos150Frames/'), batch_size_train=1)
+    train(TrainingData = load_data_set( dataset_directory + '500Videos150Frames/'), batch_size_train=1)
+    train(TrainingData = load_data_set( dataset_directory + '250Videos150Frames/'), batch_size_train=1)
+    train(TrainingData = load_data_set( dataset_directory + '100Videos150Frames/'), batch_size_train=1)
+    train(TrainingData = load_data_set(dataset_directory + '50Videos150Frames/'), batch_size_train=1)
+    train(TrainingData = load_data_set(dataset_directory + '20Videos150Frames/'), batch_size_train=1)
+
+    train(TrainingData = load_data_set(dataset_directory + '1000Videos100Frames/'), batch_size_train=2)
+    train(TrainingData = load_data_set( dataset_directory + '750Videos100Frames/'), batch_size_train=2)
+    train(TrainingData = load_data_set( dataset_directory + '500Videos100Frames/'), batch_size_train=2)
+    train(TrainingData = load_data_set( dataset_directory + '250Videos100Frames/'), batch_size_train=2)
+    train(TrainingData = load_data_set( dataset_directory + '100Videos100Frames/'), batch_size_train=2)
+    train(TrainingData = load_data_set( dataset_directory + '50Videos100Frames/'), batch_size_train=2)
+    train(TrainingData = load_data_set( dataset_directory + '20Videos100Frames/'), batch_size_train=2)
+
+    # train(TrainingData = load_data_set( dataset_directory + '1000Videos50Frames/'), batch_size_train=4)
+    # train(TrainingData = load_data_set( dataset_directory + '750Videos50Frames/'), batch_size_train=4)
+    # train(TrainingData = load_data_set( dataset_directory + '500Videos50Frames/'), batch_size_train=4)
+    # train(TrainingData = load_data_set( dataset_directory + '250Videos50Frames/'), batch_size_train=4)
+    # train(TrainingData = load_data_set( dataset_directory + '100Videos50Frames/'), batch_size_train=4)
+    # train(TrainingData = load_data_set(dataset_directory + '50Videos50Frames/'), batch_size_train=4)
+    # train(TrainingData = load_data_set(dataset_directory + '20Videos50Frames/'), batch_size_train=4)
+
+    # train(TrainingData = load_data_set( dataset_directory + '1000Videos20Frames/'), batch_size_train=8)
+    # train(TrainingData = load_data_set( dataset_directory + '750Videos20Frames/'), batch_size_train=8)
+    # train(TrainingData = load_data_set( dataset_directory + '500Videos20Frames/'), batch_size_train=8)
+    # train(TrainingData = load_data_set( dataset_directory + '250Videos20Frames/'), batch_size_train=8)
+    # train(TrainingData = load_data_set( dataset_directory + '100Videos20Frames/'), batch_size_train=8)
+    # train(TrainingData = load_data_set(dataset_directory + '50Videos20Frames/'), batch_size_train=8)
+    # train(TrainingData = load_data_set(dataset_directory + '20Videos20Frames/'), batch_size_train=8)
+
+    # train(TrainingData = load_data_set( dataset_directory + '1000Videos10Frames/'), batch_size_train=16)
+    # train(TrainingData = load_data_set( dataset_directory + '750Videos10Frames/'), batch_size_train=16)
+    # train(TrainingData = load_data_set( dataset_directory + '500Videos10Frames/'), batch_size_train=16)
+    # train(TrainingData = load_data_set( dataset_directory + '250Videos10Frames/'), batch_size_train=16)
+    # train(TrainingData = load_data_set( dataset_directory + '100Videos10Frames/'), batch_size_train=16)
+    # train(TrainingData = load_data_set(dataset_directory + '50Videos10Frames/'), batch_size_train=16)
+    # train(TrainingData = load_data_set(dataset_directory + '20Videos10Frames/'), batch_size_train=16)    

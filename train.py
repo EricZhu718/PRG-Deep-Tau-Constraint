@@ -55,7 +55,6 @@ import sys
 import os
 import math
 import numpy as np
-import gdown
 import random
 sys.path.append(os.path.abspath(''))
 import torch.utils.tensorboard

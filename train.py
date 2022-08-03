@@ -22,19 +22,40 @@ import copy
 import os
 import sys
 import torch
+import pytorch3d
 import warnings
 
-from data import load_data_set
+from data import SplineDataset, load_data_set
 from model import Model
 warnings.filterwarnings('ignore')
 
 import matplotlib.pyplot as plt
 
+# Util function for loading meshes
+from pytorch3d.io import load_objs_as_meshes, load_obj
 
+# Data structures and functions for rendering
+from pytorch3d.structures import Meshes
+# from pytorch3d.vis.plotly_vis import AxisArgs, plot_batch_individually, plot_scene
+from pytorch3d.vis.texture_vis import texturesuv_image_matplotlib
+from pytorch3d.renderer import (
+    look_at_view_transform,
+    FoVPerspectiveCameras, 
+    PointLights, 
+    DirectionalLights, 
+    Materials, 
+    RasterizationSettings, 
+    MeshRenderer, 
+    MeshRasterizer,  
+    SoftPhongShader,
+    TexturesUV,
+    TexturesVertex
+)
 import sys
 import os
 import math
 import numpy as np
+import gdown
 import random
 sys.path.append(os.path.abspath(''))
 import torch.utils.tensorboard
@@ -45,18 +66,18 @@ import os
 
 # access cuda
 if torch.cuda.is_available():
-    device = torch.device('cuda:0')
+    device = torch.device("cuda:0")
     torch.cuda.set_device(device)
 else:
-    device = torch.device('cpu')
-print('device: ' + str(device))
+    device = torch.device("cpu")
+print(device)
 
 
 # custom loss function,
 # the my_outputs is a tensor matrix with only 1 column and it represents the phi predictions from our NN
 # deltas_and_times is a tensor matrix with 2 columns: the first one is double integral of acceleration, the second are the time values 
 def custom_loss(phi_hat, deltas_and_times): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
-    # print('hi')
+    # print("hi")
     # print(my_outputs.size())
     phi_hat.reshape(phi_hat.size()[0], 1)
     deltas = deltas_and_times[:,0]
@@ -70,18 +91,18 @@ def custom_loss(phi_hat, deltas_and_times): # my_outputs are the phi output appr
 
     # solve the least squares for Z(0) and Z'(0)
     transpose = torch.transpose(phi_and_time, 0, 1)
-    # print('transpose: ')
+    # print("transpose: ")
     # print(transpose)
     product = torch.matmul(transpose, phi_and_time) # 2 by 2 matrix
-    # print('product: ')
+    # print("product: ")
     # print(product)   
     inverse = torch.inverse(product)
-    # print('inverse')
+    # print("inverse")
     # print(inverse)
     Z_and_Z_vel = torch.matmul(torch.matmul(inverse, transpose), deltas) # first entry is estimated Z(0), second is estimated Z'(0)
-    # print('Z_and_Z_vel')
+    # print("Z_and_Z_vel")
     # print(Z_and_Z_vel)
-    # print('Hi')
+    # print("Hi")
     # print(Z_and_Z_vel)
 
     # Z_and_Z_vel_actual = torch.tensor([[np.double(3.0)],[np.double(0.0)]]).to(device)
@@ -108,8 +129,15 @@ def least_squares(A:torch.tensor, b:torch.tensor) -> torch.tensor:
 
 def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
     Epochs = 250, TrainingData = None, ValidationData = None, batch_size_train = 2, \
-        batch_size_val = 2):
-    
+        batch_size_val = 2, writer=None, path=None):
+    # set up directory for the run
+    # path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    os.mkdir(path + 'validation_set')
+    os.mkdir(path + 'training_set')
+    os.mkdir(path + 'weights')
+    # writer = SummaryWriter(log_dir = path + '/' + 'tensorboard_dir')
+
     try:
         # Training dataloader
         if TrainingData is None:
@@ -122,46 +150,36 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
         # Validation dataloader
         if ValidationData is None:
-            ValidationData = load_data_set('Video_Datasets/250Videos100Frames') # generate videos for validation
+            ValidationData = load_data_set('/home/tau/Video_Datasets/250Videos100Frames') # generate videos for validation
         ValidationLoader = DataLoader(ValidationData, batch_size_val)
 
-        # set up directory for the run
-        path = '../deep_tau_runs/'
-        # path = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/deep_tau_runs/'
-        path += str(datetime.datetime.now()).replace(' ', '_').replace(':', '_') + '/'
-        os.mkdir(path)
-        os.mkdir(path + 'validation_set')
-        os.mkdir(path + 'training_set')
-        os.mkdir(path + 'weights')
-        os.mkdir(path + 'tensorboard_dir')
-
         # set up tensorboard writer
-        writer = SummaryWriter(log_dir = path + 'tensorboard_dir')
-        writer.add_text('training params:', 'lr: ' + str(Learning_rate) + '\nframes: ' + str(Frames) +'\nVideos: ' + str(Training_Video_Num)+'\nBatch size: ' + str(batch_size_train))
+        # if writer is None:
+        #     writer = SummaryWriter(log_dir = path + '/' + 'tensorboard_dir')
+        writer.add_text("training params:", 'lr: ' + str(Learning_rate) + '\nframes: ' + str(Frames) +'\nVideos: ' + str(Training_Video_Num)+'\nBatch size: ' + str(batch_size_train))
         print('Command to view tensorboard is:\ntensorboard --logdir ' + writer.log_dir)
-        counter= 0
 
-        validation_file = open(path + 'validation.txt','w')
-        training_file = open(path + 'training.txt','w')
+        validation_file = open(path + "validation.txt","w")
+        training_file = open(path + "training.txt","w")
 
 
-        # training loop
+        # # training loop
         for epoch in range(Epochs):
-            def run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero) -> torch.tensor:
+            def run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,counter,path,i,epoch) -> torch.tensor:
                 batches_num = img_batches.shape[0]
                 batch_loss = torch.tensor([0.0]).to(device)
-
+                # print(z_zero.shape)
                 # make a tensor in the shape (batches * (frames-1), 144, 144)
                 img_pairs = torch.cat(tuple(img_batches[k] for k in range(batches_num)), dim = 0).float().to(device)
-                
+                # print(img_pairs.shape)
                 # run all image pairs into the model
                 phi_batch = model(img_pairs)
-
+                # print(phi_batch.shape)
                 # reshape tensor into shape (batches, frames-1)
                 phi_batch = torch.cat(tuple(phi_batch[j * phi_batch.shape[0] // \
                     batches_num: (j + 1) * phi_batch.shape[0] // batches_num] for \
                         j in range(batches_num)), dim = 1).permute((1,0)).to(device)
-                
+                # print(phi_batch.shape)
                 for j in range(batches_num): # for each batch in our batches
                     accel_arr = accel_batches[j].to(device)
                     time_arr = time_batches[j].to(device)
@@ -170,7 +188,51 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                     
                     loss,delta_accel_from_phi,delta_accel_actual,predicted_depth, predicted_velocity \
                         = custom_loss((phi_batch[j])[:,None], deltas_and_time[1:])
+
+                    if counter %10 == 0:
+                        z_dot_zero_tensor = (z_dot_zero[j]).to(device)
+                        delta_accel_arr_gpu = delta_accel_arr.to(device)
+                        z_zero_gpu = z_zero[j].to(device)
+                        phi_actual = torch.tensor(1 + z_dot_zero_tensor/z_zero_gpu + delta_accel_arr_gpu/z_zero_gpu).to(device)
+
+                        phi_hat = phi_batch[j].detach().cpu().numpy().flatten()
+                        phi_gt = phi_actual.detach().cpu().numpy()
+
+                        z0  = z_zero[j].detach().cpu().numpy()
+                        dz0 = z_dot_zero_tensor.detach().cpu().numpy().flatten()
+                        z0_predicted = predicted_depth.detach().cpu().numpy()
+                        time_copy = time_arr.detach().cpu().numpy().flatten()
+                        dz0_predicted = (predicted_velocity.detach().cpu().numpy().flatten())*(time_copy)
+
+                        delta_accel_actual_numpy = delta_accel_actual.detach().cpu().numpy()
+                        delta_accel_from_phi_numpy = delta_accel_from_phi.detach().cpu().numpy()
+
+                        fig,axs =plt.subplots(nrows=3, ncols = 1, sharey = True,figsize = (10,15))
+                        axs[0].plot(time_copy[1:], delta_accel_actual_numpy, label='actual_delta')
+                        axs[0].plot(time_copy[1:],delta_accel_from_phi_numpy, label='predicted_delta')
+                        axs[0].legend()
+                        axs[1].plot(time_copy,(z0*(phi_gt-1)).flatten(), label='actual_(phi-1)*z(0)')
+                        axs[1].plot(time_copy[1:], z0_predicted*(phi_hat-1), label='predicted_(phi-1)*z(0)')
+                        axs[1].legend()
+                        axs[2].plot(time_copy,(-dz0), label='-actual_dz0*t')
+                        axs[2].plot(time_copy,(-dz0_predicted), label='-predicted_dz0*t')
+                        axs[2].legend()
+                    
+                        plt.savefig(path + "training_set/epoch_" + str(epoch) + "_train_number_" + str(batches_num*i+j) + "_.png",bbox_inches='tight')
+                        # fig.clear()
+                        # plt.close(fig)
+                        # fig.clear()
+                        # plt.close(axs)
+                        # plt.show()
+                        # plt.clf()
+                        # plt.figure.clear()
+                        plt.close()
+                        plt.cla()
+                        plt.clf()
+
                     batch_loss += loss
+                    counter += 1
+
                 return batch_loss
             
             def run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero) -> torch.tensor:
@@ -198,6 +260,51 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                         
                         loss,delta_accel_from_phi,delta_accel_actual,predicted_depth, predicted_velocity \
                             = custom_loss((phi_batch[j])[:,None], deltas_and_time[1:])
+
+                        if counter %10 == 0:
+
+                            z_dot_zero_tensor = (z_dot_zero[j]).to(device)
+                            delta_accel_arr_gpu = delta_accel_arr.to(device)
+                            z_zero_gpu = z_zero[j].to(device)
+                            phi_actual = torch.tensor(1 + z_dot_zero_tensor/z_zero_gpu + delta_accel_arr_gpu/z_zero_gpu).to(device)
+
+                            phi_hat = phi_batch[j].detach().cpu().numpy().flatten()
+                            phi_gt = phi_actual.detach().cpu().numpy()
+
+                            z0  = z_zero[j].detach().cpu().numpy()
+                            dz0 = z_dot_zero_tensor.detach().cpu().numpy().flatten()
+                            z0_predicted = predicted_depth.detach().cpu().numpy()
+                            time_copy = time_arr.detach().cpu().numpy().flatten()
+                            dz0_predicted = (predicted_velocity.detach().cpu().numpy().flatten())*(time_copy)
+
+                            delta_accel_actual_numpy = delta_accel_actual.detach().cpu().numpy()
+                            delta_accel_from_phi_numpy = delta_accel_from_phi.detach().cpu().numpy()
+
+                            fig,axs =plt.subplots(nrows=3, ncols = 1, sharey = True,figsize = (10,15))
+                            axs[0].plot(time_copy[1:], delta_accel_actual_numpy, label='actual_delta')
+                            axs[0].plot(time_copy[1:],delta_accel_from_phi_numpy, label='predicted_delta')
+                            axs[0].legend()
+                            axs[1].plot(time_copy,(z0*(phi_gt-1)).flatten(), label='actual_(phi-1)*z(0)')
+                            axs[1].plot(time_copy[1:], z0_predicted*(phi_hat-1), label='predicted_(phi-1)*z(0)')
+                            axs[1].legend()
+                            axs[2].plot(time_copy,(-dz0), label='-actual_dz0*t')
+                            axs[2].plot(time_copy,(-dz0_predicted), label='-predicted_dz0*t')
+                            axs[2].legend()
+                        
+                            plt.savefig(path + "validation_set/epoch_" + str(epoch) + "_train_number_" + str(batches_num*i+j) + "_.png",bbox_inches='tight')
+                            
+                            # fig.clear()
+                            # plt.close(fig)
+                            # axs.clear()
+                            # plt.close(axs)
+                            # plt.show()
+                            # plt.clf()
+
+                            # plt.figure.clear()
+                            plt.close()
+                            plt.cla()
+                            plt.clf()
+
                         batch_loss += loss
 
                 return batch_loss
@@ -206,30 +313,30 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
             sum_of_train_loss = 0
             sum_of_val_loss = 0
             
-            
+            counter = 0
             # One epoch of training loop
             for i, data in enumerate(TrainLoader):
-
-                img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
                 
-                batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero)
+                img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
+                # print(img_batches.shape)
+                batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,counter,path,i,epoch)
                 batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
                 sum_of_train_loss += batch_loss.item()
-
-                
-
+            
+            counter = 0
             # One epoch of validation loop
             for i, data in enumerate(ValidationLoader):
-                
+                # print(i)
                 img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
                 
-                batch_loss = run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero)
+                batch_loss = run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,counter,path,i,epoch)
 
                 sum_of_val_loss += batch_loss.item()
 
+            
             print('epoch: {} avg_train_loss: {:.4f} avg_val_loss: {:.4f}'\
                 .format(epoch, sum_of_train_loss / (len(TrainLoader) * batch_size_train), \
                     sum_of_val_loss / (len(ValidationLoader) * batch_size_val)))
@@ -243,56 +350,210 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
         # python3 myscript.py 2>&1 | tee output.txt
         torch.cuda.empty_cache()
     
-    torch.cuda.empty_cache()
     writer.close()
+    torch.cuda.empty_cache()
     validation_file.close()
     training_file.close()
 
 if __name__ == '__main__':
-    # os.mkdir('C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/deep_tau_runs/2/')
+
+    # TrainingData = SplineDataset(5, frames = 20)
+    # data = TrainingData.__getitem__(0)[0]
+    # for i in range(len(data)):
+    #     print(len(data))
+    #     plt.imshow(data[i][0:3].permute(1,2,0).numpy())
+    #     plt.imshow(data[i][3:6].permute(1,2,0).numpy())
+    #     plt.show()
 
 
 
-    # dataset_directory = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/Video_Datasets/'
-    dataset_directory = '../Video_Datasets/'
 
-    # train(TrainingData = load_data_set(dataset_directory + '1000Videos200Frames/'),batch_size_train= 1)
-    train(TrainingData = load_data_set( dataset_directory + '1000Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '750Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '500Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '250Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '100Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set(dataset_directory + '50Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set(dataset_directory + '20Videos150Frames/'), batch_size_train=1)
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set("../Video_Datasets/1000Videos200Frames/"),batch_size_train= 1, writer = writer, path=path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos150Frames/"), batch_size_train=1,writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/750Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/500Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/250Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/100Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set ("../Video_Datasets/50Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
+    train(TrainingData = load_data_set ("../Video_Datasets/20Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
 
-    train(TrainingData = load_data_set(dataset_directory + '1000Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '750Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '500Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '250Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '100Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '50Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '20Videos100Frames/'), batch_size_train=2)
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set ("../Video_Datasets/1000Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/750Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/500Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/250Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/100Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/50Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
+    train(TrainingData = load_data_set( "../Video_Datasets/20Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
 
-    # train(TrainingData = load_data_set( dataset_directory + '1000Videos50Frames/'), batch_size_train=4)
-    # train(TrainingData = load_data_set( dataset_directory + '750Videos50Frames/'), batch_size_train=4)
-    # train(TrainingData = load_data_set( dataset_directory + '500Videos50Frames/'), batch_size_train=4)
-    # train(TrainingData = load_data_set( dataset_directory + '250Videos50Frames/'), batch_size_train=4)
-    # train(TrainingData = load_data_set( dataset_directory + '100Videos50Frames/'), batch_size_train=4)
-    # train(TrainingData = load_data_set(dataset_directory + '50Videos50Frames/'), batch_size_train=4)
-    # train(TrainingData = load_data_set(dataset_directory + '20Videos50Frames/'), batch_size_train=4)
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/750Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/500Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/250Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/100Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set("../Video_Datasets/50Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
+    train(TrainingData = load_data_set("../Video_Datasets/20Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
 
-    # train(TrainingData = load_data_set( dataset_directory + '1000Videos20Frames/'), batch_size_train=8)
-    # train(TrainingData = load_data_set( dataset_directory + '750Videos20Frames/'), batch_size_train=8)
-    # train(TrainingData = load_data_set( dataset_directory + '500Videos20Frames/'), batch_size_train=8)
-    # train(TrainingData = load_data_set( dataset_directory + '250Videos20Frames/'), batch_size_train=8)
-    # train(TrainingData = load_data_set( dataset_directory + '100Videos20Frames/'), batch_size_train=8)
-    # train(TrainingData = load_data_set(dataset_directory + '50Videos20Frames/'), batch_size_train=8)
-    # train(TrainingData = load_data_set(dataset_directory + '20Videos20Frames/'), batch_size_train=8)
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/750Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/500Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/250Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/100Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set("../Video_Datasets/50Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
+    train(TrainingData = load_data_set("../Video_Datasets/20Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
 
-    # train(TrainingData = load_data_set( dataset_directory + '1000Videos10Frames/'), batch_size_train=16)
-    # train(TrainingData = load_data_set( dataset_directory + '750Videos10Frames/'), batch_size_train=16)
-    # train(TrainingData = load_data_set( dataset_directory + '500Videos10Frames/'), batch_size_train=16)
-    # train(TrainingData = load_data_set( dataset_directory + '250Videos10Frames/'), batch_size_train=16)
-    # train(TrainingData = load_data_set( dataset_directory + '100Videos10Frames/'), batch_size_train=16)
-    # train(TrainingData = load_data_set(dataset_directory + '50Videos10Frames/'), batch_size_train=16)
-    # train(TrainingData = load_data_set(dataset_directory + '20Videos10Frames/'), batch_size_train=16)    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/750Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/500Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/250Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set( "../Video_Datasets/100Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set("../Video_Datasets/50Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    
+    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    os.mkdir(path + 'tensorboard_dir')
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    train(TrainingData = load_data_set("../Video_Datasets/20Videos10Frames/"), batch_size_train=16,writer = writer, path=path)    

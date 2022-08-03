@@ -12,7 +12,7 @@ from torch.utils.data import Dataset, DataLoader
 from time import time
 from scipy.spatial.transform import Rotation as Rot
 import math
-from torch import scalar_tensor
+from torch import scalar_tensor, tensor
 import time
 import copy
 
@@ -52,6 +52,34 @@ class DirectoryLoadedDataset(Dataset):
   def __getitem__(self, index):
     return self.data[index]
 
+class RecDataset(Dataset):
+  def __init__(self, dir_path):
+    self.data = []
+    if dir_path[-1] != '/':
+      dir_path += '/'
+    counter = 0
+    for file in os.listdir(dir_path):
+      original_vals = torch.load(dir_path + file)
+      original_doubles = original_vals[0]
+      new_doubles = [original_doubles[0][None, :]]
+      
+      for i in range(1, len(original_doubles)):
+        new_doubles.append(torch.cat((original_doubles[i-1][3:6], original_doubles[i][3:6]), dim = 0)[None, :])
+
+        # print(new_doubles[i].shape)  
+      
+      
+      self.data.append((torch.cat(tuple(new_doubles)),) + original_vals[1:])
+      # print(self.data[counter].shape)
+      counter += 1
+    
+  def __len__(self):
+    return len(self.data)
+    
+  def __getitem__(self, index):
+    return self.data[index]
+
+
 
 def save_data_set(dataset:Dataset, directory_name:str) -> None:
   try:
@@ -71,7 +99,18 @@ def load_data_set(directory_name:str) -> Dataset:
   return DirectoryLoadedDataset(directory_name)
 
 
-# if __name__ == '__main__':
+if __name__ == '__main__':
+  loaded = load_data_set('C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/Video_Datasets/250Videos20Frames/')
+  dataset = RecDataset('C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/Video_Datasets/250Videos20Frames/')
+  data = dataset.__getitem__(0)[0]
+  # print(len(data))
+  for i in range(len(data)):
+    # print(data[i].shape)
+    plt.imshow(data[i][0:3].permute(1,2,0).numpy())
+    plt.show()
+    plt.imshow(data[i][3:6].permute(1,2,0).numpy())
+    plt.show()
+
   # save_data_set(SplineDataset(1000, frames = 200), "../Video_Datasets/1000Videos200Frames/")
   # save_data_set(SplineDataset(1000, frames = 150), "../Video_Datasets/1000Videos150Frames/")
   # save_data_set(SplineDataset(750, frames = 150), "../Video_Datasets/750Videos150Frames/")

@@ -435,7 +435,7 @@ class SplineDataset(Dataset):
 
         for k in range(1, len(img_arr)):
             double_img = torch.cat((img_arr[0], img_arr[k]),2)
-            double_img = torch.reshape(double_img,(1,double_img.shape[2],double_img.shape[0], double_img.shape[1]))
+            double_img = torch.permute(2,0,1)[None, :]
             arr_of_doubles.append(double_img)
 
 

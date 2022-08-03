@@ -24,7 +24,7 @@ import sys
 import torch
 import warnings
 
-from data import load_data_set
+from data import DirectoryLoadedDataset, RecDataset, load_data_set
 from model import Model
 warnings.filterwarnings('ignore')
 
@@ -108,7 +108,7 @@ def least_squares(A:torch.tensor, b:torch.tensor) -> torch.tensor:
 
 def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
     Epochs = 250, TrainingData = None, ValidationData = None, batch_size_train = 2, \
-        batch_size_val = 2):
+        batch_size_val = 2, rec = False):
     
     try:
         # Training dataloader
@@ -122,12 +122,12 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
         # Validation dataloader
         if ValidationData is None:
-            ValidationData = load_data_set('Video_Datasets/250Videos100Frames') # generate videos for validation
+            ValidationData = load_data_set('Video_Datasets/250Videos20Frames') # generate videos for validation
         ValidationLoader = DataLoader(ValidationData, batch_size_val)
 
         # set up directory for the run
-        path = '../deep_tau_runs/'
-        # path = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/deep_tau_runs/'
+        # path = '../deep_tau_runs/'
+        path = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/deep_tau_runs/'
         path += str(datetime.datetime.now()).replace(' ', '_').replace(':', '_') + '/'
         os.mkdir(path)
         os.mkdir(path + 'validation_set')
@@ -147,7 +147,9 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
         # training loop
         for epoch in range(Epochs):
+            
             def run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero) -> torch.tensor:
+                # print(img_batches.shape)
                 batches_num = img_batches.shape[0]
                 batch_loss = torch.tensor([0.0]).to(device)
 
@@ -172,6 +174,45 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                         = custom_loss((phi_batch[j])[:,None], deltas_and_time[1:])
                     batch_loss += loss
                 return batch_loss
+
+            def run_batch_train_rec(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero) -> torch.tensor:
+                # print(img_batches.shape)
+                batches_num = img_batches.shape[0]
+                batch_loss = torch.tensor([0.0]).to(device)
+
+                # make a tensor in the shape (batches * (frames-1), 144, 144)
+                img_pairs = torch.cat(tuple(img_batches[k] for k in range(batches_num)), dim = 0).float().to(device)
+                
+                # run all image pairs into the model
+                phi_batch = model(img_pairs)
+
+                # reshape tensor into shape (batches, frames-1)
+                phi_batch = torch.cat(tuple(phi_batch[j * phi_batch.shape[0] // \
+                    batches_num: (j + 1) * phi_batch.shape[0] // batches_num] for \
+                        j in range(batches_num)), dim = 1).permute((1,0)).to(device)
+                
+                # print('phi_batch:\n'+str(phi_batch))
+
+
+                for j in range(batches_num): # for each batch in our batches
+                    accel_arr = accel_batches[j].to(device)
+                    time_arr = time_batches[j].to(device)
+                    delta_accel_arr = delta_accel_batches[j].to(device)
+                    deltas_and_time = torch.cat((torch.reshape(delta_accel_arr, (-1,1)), torch.reshape(time_arr, (-1,1))), 1).to(device)
+                    
+                    phi = torch.tensor([[1.0] for i in range(len(phi_batch[j]))]).to(device)
+                    for k in range(0, len(phi)):
+                        for l in range(k, len(phi)):
+                            phi[len(phi) - k - 1] *= phi_batch[j][l]
+                    # print('phi unmult: \n' + str(phi_batch[j][:, None]))
+                    # print('phi mult: \n' + str(phi))
+
+                    loss,delta_accel_from_phi,delta_accel_actual,predicted_depth, predicted_velocity \
+                        = custom_loss(phi, deltas_and_time[1:])
+                    batch_loss += loss
+                    print('loss: ' + str(loss.item()))
+                return batch_loss
+            
             
             def run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero) -> torch.tensor:
                 with torch.no_grad():
@@ -211,8 +252,13 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
             for i, data in enumerate(TrainLoader):
 
                 img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
-                
-                batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero)
+                batch_loss = None
+
+                if rec:
+                    batch_loss = run_batch_train_rec(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero)
+                else:
+                    batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero)
+
                 batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
@@ -233,11 +279,12 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
             print('epoch: {} avg_train_loss: {:.4f} avg_val_loss: {:.4f}'\
                 .format(epoch, sum_of_train_loss / (len(TrainLoader) * batch_size_train), \
                     sum_of_val_loss / (len(ValidationLoader) * batch_size_val)))
+            
             writer.add_scalars('Losses during training', {'avg training loss':sum_of_train_loss / (len(TrainLoader) * batch_size_train),
                                         'avg validation loss':sum_of_val_loss / (len(ValidationLoader) * batch_size_val)}, epoch)
             sum_of_train_loss = 0
             sum_of_val_loss = 0
-
+            torch.save(model.state_dict(), 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/saves/model'+str(epoch)+'.pth')
     except RuntimeError as e:
         print(e)
         # python3 myscript.py 2>&1 | tee output.txt
@@ -253,25 +300,25 @@ if __name__ == '__main__':
 
 
 
-    # dataset_directory = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/Video_Datasets/'
-    dataset_directory = '../Video_Datasets/'
+    dataset_directory = 'C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/Video_Datasets/'
+    # dataset_directory = '../Video_Datasets/'
 
     # train(TrainingData = load_data_set(dataset_directory + '1000Videos200Frames/'),batch_size_train= 1)
-    train(TrainingData = load_data_set( dataset_directory + '1000Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '750Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '500Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '250Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set( dataset_directory + '100Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set(dataset_directory + '50Videos150Frames/'), batch_size_train=1)
-    train(TrainingData = load_data_set(dataset_directory + '20Videos150Frames/'), batch_size_train=1)
+    train(TrainingData = DirectoryLoadedDataset( dataset_directory + '250Videos20Frames/'), batch_size_train=1)
+    # train(TrainingData = load_data_set( dataset_directory + '750Videos150Frames/'), batch_size_train=1)
+    # train(TrainingData = load_data_set( dataset_directory + '500Videos150Frames/'), batch_size_train=1)
+    # train(TrainingData = load_data_set( dataset_directory + '250Videos150Frames/'), batch_size_train=1)
+    # train(TrainingData = load_data_set( dataset_directory + '100Videos150Frames/'), batch_size_train=1)
+    # train(TrainingData = load_data_set(dataset_directory + '50Videos150Frames/'), batch_size_train=1)
+    # train(TrainingData = load_data_set(dataset_directory + '20Videos150Frames/'), batch_size_train=1)
 
-    train(TrainingData = load_data_set(dataset_directory + '1000Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '750Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '500Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '250Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '100Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '50Videos100Frames/'), batch_size_train=2)
-    train(TrainingData = load_data_set( dataset_directory + '20Videos100Frames/'), batch_size_train=2)
+    # train(TrainingData = load_data_set(dataset_directory + '1000Videos100Frames/'), batch_size_train=2)
+    # train(TrainingData = load_data_set( dataset_directory + '750Videos100Frames/'), batch_size_train=2)
+    # train(TrainingData = load_data_set( dataset_directory + '500Videos100Frames/'), batch_size_train=2)
+    # train(TrainingData = load_data_set( dataset_directory + '250Videos100Frames/'), batch_size_train=2)
+    # train(TrainingData = load_data_set( dataset_directory + '100Videos100Frames/'), batch_size_train=2)
+    # train(TrainingData = load_data_set( dataset_directory + '50Videos100Frames/'), batch_size_train=2)
+    # train(TrainingData = load_data_set( dataset_directory + '20Videos100Frames/'), batch_size_train=2)
 
     # train(TrainingData = load_data_set( dataset_directory + '1000Videos50Frames/'), batch_size_train=4)
     # train(TrainingData = load_data_set( dataset_directory + '750Videos50Frames/'), batch_size_train=4)

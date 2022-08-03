@@ -99,5 +99,5 @@ class Model(nn.Module):
         out = self.fc2(out)
         out = self.relu2(out)
         out = self.fc3(out)
-        return out
+        return 2**out
         

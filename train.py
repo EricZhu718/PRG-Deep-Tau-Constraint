@@ -406,192 +406,192 @@ if __name__ == '__main__':
 
 
 
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set("/home/tau/Video_Datasets/1000Videos200Frames/"),batch_size_train= 1, writer = writer, path=path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/1000Videos150Frames/"), batch_size_train=1,writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/750Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/500Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/250Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/100Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set ("/home/tau/Video_Datasets/50Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
+    # train(TrainingData = load_data_set ("/home/tau/Video_Datasets/20Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set ("/home/tau/Video_Datasets/1000Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/750Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/500Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/250Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set("../Video_Datasets/1000Videos200Frames/"),batch_size_train= 1, writer = writer, path=path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/100Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos150Frames/"), batch_size_train=1,writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/50Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/750Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/500Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/250Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/100Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set ("../Video_Datasets/50Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
-    train(TrainingData = load_data_set ("../Video_Datasets/20Videos150Frames/"), batch_size_train=1, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/20Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
 
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set ("../Video_Datasets/1000Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/1000Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/750Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/750Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/500Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/500Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/250Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/250Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/100Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/100Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/50Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    train(TrainingData = load_data_set("/home/tau/Video_Datasets/50Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
-    train(TrainingData = load_data_set( "../Video_Datasets/20Videos100Frames/"), batch_size_train=2, writer=writer, path = path)
+    train(TrainingData = load_data_set("/home/tau/Video_Datasets/20Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
 
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/1000Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/750Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/750Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/500Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/500Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/250Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/250Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/100Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set("../Video_Datasets/50Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
-    train(TrainingData = load_data_set("../Video_Datasets/20Videos50Frames/"), batch_size_train=4, writer=writer, path = path)
-
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/750Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/500Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/250Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
-    
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/100Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/100Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set("../Video_Datasets/50Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    train(TrainingData = load_data_set("/home/tau/Video_Datasets/50Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')    
-    train(TrainingData = load_data_set("../Video_Datasets/20Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
+    train(TrainingData = load_data_set("/home/tau/Video_Datasets/20Videos20Frames/"), batch_size_train=8, writer=writer, path = path)
 
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/1000Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/1000Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/750Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/750Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/500Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/500Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/250Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/250Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set( "../Video_Datasets/100Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    train(TrainingData = load_data_set( "/home/tau/Video_Datasets/100Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set("../Video_Datasets/50Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
+    train(TrainingData = load_data_set("/home/tau/Video_Datasets/50Videos10Frames/"), batch_size_train=16,writer = writer, path=path)
     
-    path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     os.mkdir(path)
     os.mkdir(path + 'tensorboard_dir')
     writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set("../Video_Datasets/20Videos10Frames/"), batch_size_train=16,writer = writer, path=path)    
+    train(TrainingData = load_data_set("/home/tau/Video_Datasets/20Videos10Frames/"), batch_size_train=16,writer = writer, path=path)    

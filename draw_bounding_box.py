@@ -50,7 +50,7 @@ from torch import tensor
 def get_bounding_box(single_img:tensor) -> tuple:
     if single_img.shape[0] == 3:
         single_img = single_img.permute(1,2,0)
-    target = np.where(((img[:,:,0] < 255) & (img[:,:,1] < 255) & (img[:,:,2] < 255)))
+    target = np.where(((single_img[:,:,0] < 255) & (single_img[:,:,1] < 255) & (single_img[:,:,2] < 255)))
     min_x = np.min(target[1])
     min_y = np.min(target[0])
     max_x = np.max(target[1])
@@ -60,17 +60,35 @@ def get_bounding_box(single_img:tensor) -> tuple:
 
 
 
+# WARNING PIXEL VALUES ASSUME ORIGIN IS AT THE CENTER OF THE SCREEN 
+def calculate_phi(p1, p2, p3, p1_new, p2_new, p3_new):
+    
+    affine_matrix = np.matmul(np.array(
+        [
+            [p1_new[0], p2_new[0], p3_new[0]],
+            [p1_new[1], p2_new[1], p3_new[1]],
+            [1.0, 1.0, 1.0] 
+        ]
+        ), np.linalg.inv(np.array([
+        [p1[0], p2[0], p3[0]],
+        [p1[1], p2[1], p3[1]],
+        [1.0, 1.0, 1.0] 
+        ])))
+    phi = 1.0 / affine_matrix[0][0]
+    return phi
 
 if __name__ == '__main__':
-    data = torch.load("C:/Users/ezhu2/Documents/GitHub/PRG-Deep-Tau-Constraint/Video_Datasets/20Videos20Frames/2")
-    for double_img in data[0]:
-        img= double_img[3:6].permute(1,2,0)
-        (min_x, min_y), (max_x, max_y) = get_bounding_box(img)
+    # data = torch.load("/home/tau/Video_Datasets/20Videos20Frames/2")[0]
+    # for double_img in data:
+    #     img= double_img[3:6].permute(1,2,0)
+    #     (min_x, min_y), (max_x, max_y) = get_bounding_box(img)
 
-        result = np.ascontiguousarray(img.numpy().astype('uint8'))
-        plt.imshow(result)
-        plt.show()
-        cv.rectangle(result, (min_x, min_y), (max_x, max_y), (0, 0, 255), 1)        
-        plt.imshow(result)
-        plt.show()
-    
+    #     result = np.ascontiguousarray(img.numpy().astype('uint8'))
+    #     plt.imshow(result)
+    #     plt.show()
+    #     cv.rectangle(result, (min_x, min_y), (max_x, max_y), (0, 0, 255), 1)        
+    #     plt.imshow(result)
+    #     plt.show()
+    print(calculate_phi((1,0), (0,1), (1,1), (1/2,0), (0, 1/2), (1/2, 1/2)))
+
+

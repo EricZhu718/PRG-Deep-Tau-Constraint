@@ -89,6 +89,52 @@ if __name__ == '__main__':
     #     cv.rectangle(result, (min_x, min_y), (max_x, max_y), (0, 0, 255), 1)        
     #     plt.imshow(result)
     #     plt.show()
-    print(calculate_phi((1,0), (0,1), (1,1), (1/2,0), (0, 1/2), (1/2, 1/2)))
+    # print(calculate_phi((1,0), (0,1), (1,1), (1/2,0), (0, 1/2), (1/2, 1/2)))
+    
+    
+    images, accel_arr, time_arr, delta_accel_arr, z_zero, z_dot_zero = torch.load("/home/tau/Video_Datasets/20Videos20Frames/2")
+    # print(z_dot_zero / time_arr)
+    phi_arr = (delta_accel_arr + z_zero + z_dot_zero) / z_zero
+    # print(phi_arr)
+    counter = 1
+    for double_img in images:
+        start_img= double_img[0:3].permute(1,2,0)
+        (min_x_start, min_y_start), (max_x_start, max_y_start) = get_bounding_box(start_img)
 
+        # set origin to center
+        max_x_start -= len(start_img[0])/2
+        min_x_start -= len(start_img[0])/2
+
+        max_y_start -= len(start_img)/2
+        min_y_start -= len(start_img)/2
+
+        end_img= double_img[3:6].permute(1,2,0)
+        (min_x_end, min_y_end), (max_x_end, max_y_end) = get_bounding_box(end_img)
+
+
+        # set origin to center
+        max_x_start -= len(start_img[0])/2
+        min_x_start -= len(start_img[0])/2
+        max_y_start -= len(start_img)/2
+        min_y_start -= len(start_img)/2
+        max_x_end -= len(end_img[0])/2
+        min_x_end -= len(end_img[0])/2
+        max_y_end -= len(end_img)/2
+        min_y_end -= len(end_img)/2
+
+        pred_phi = calculate_phi((min_x_start, min_y_start), (min_x_start, max_y_start), \
+            (max_x_start, max_y_start), (min_x_end, min_y_end), (min_x_end, max_y_end), \
+                (max_x_end, max_y_end))
+        true_phi = phi_arr[counter]
+
+        print('true phi: {:.4f} pred phi: {:.4f}'.format(true_phi, pred_phi))
+
+        counter += 1
+        # result = np.ascontiguousarray(img.numpy().astype('uint8'))
+        # plt.imshow(result)
+        # plt.show()
+        # cv.rectangle(result, (min_x, min_y), (max_x, max_y), (0, 0, 255), 1)        
+        # plt.imshow(result)
+        # plt.show()
+    
 

@@ -23,7 +23,6 @@ import gc
 import os
 import sys
 import torch
-import pytorch3d
 import warnings
 
 from data import SplineDataset, load_data_set
@@ -32,31 +31,10 @@ warnings.filterwarnings('ignore')
 
 import matplotlib.pyplot as plt
 
-# Util function for loading meshes
-from pytorch3d.io import load_objs_as_meshes, load_obj
-
-# Data structures and functions for rendering
-from pytorch3d.structures import Meshes
-# from pytorch3d.vis.plotly_vis import AxisArgs, plot_batch_individually, plot_scene
-from pytorch3d.vis.texture_vis import texturesuv_image_matplotlib
-from pytorch3d.renderer import (
-    look_at_view_transform,
-    FoVPerspectiveCameras, 
-    PointLights, 
-    DirectionalLights, 
-    Materials, 
-    RasterizationSettings, 
-    MeshRenderer, 
-    MeshRasterizer,  
-    SoftPhongShader,
-    TexturesUV,
-    TexturesVertex
-)
 import sys
 import os
 import math
 import numpy as np
-import gdown
 import random
 sys.path.append(os.path.abspath(''))
 import torch.utils.tensorboard

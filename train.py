@@ -17,6 +17,7 @@ import math
 from torch import scalar_tensor
 import time
 import copy
+import gc
 
 # from google.colab import drive, files
 import os
@@ -63,7 +64,8 @@ from torch.utils.tensorboard import SummaryWriter
 from sklearn.linear_model import LinearRegression
 import datetime
 import os
-
+import matplotlib
+matplotlib.use('agg')
 # access cuda
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
@@ -110,10 +112,10 @@ def custom_loss(phi_hat, deltas_and_times): # my_outputs are the phi output appr
 
     delta_accel_from_phi = torch.matmul(phi_and_time, Z_and_Z_vel)
     residues = torch.sub(delta_accel_from_phi, deltas) # difference between predicted delta values and true delta values
-    residues = torch.norm(residues)**2 
+    residues = 1000*torch.norm(residues)**2 
     
     # print(Z_and_Z_vel)
-    return residues*1000, delta_accel_from_phi, deltas, Z_and_Z_vel[0], Z_and_Z_vel[1]  # returns the norm of the residue vector (ie square all the terms and add them together)
+    return residues, delta_accel_from_phi, deltas, Z_and_Z_vel[0], Z_and_Z_vel[1]  # returns the norm of the residue vector (ie square all the terms and add them together)
 
 def least_squares(A:torch.tensor, b:torch.tensor) -> torch.tensor:
     if len(A.shape) == 1:
@@ -126,6 +128,7 @@ def least_squares(A:torch.tensor, b:torch.tensor) -> torch.tensor:
 
 
 
+count = 0
 
 def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
     Epochs = 250, TrainingData = None, ValidationData = None, batch_size_train = 2, \
@@ -165,7 +168,7 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
         # # training loop
         for epoch in range(Epochs):
-            def run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,counter,path,i,epoch) -> torch.tensor:
+            def run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,path,i,epoch) -> torch.tensor:
                 batches_num = img_batches.shape[0]
                 batch_loss = torch.tensor([0.0]).to(device)
                 # print(z_zero.shape)
@@ -188,8 +191,16 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                     
                     loss,delta_accel_from_phi,delta_accel_actual,predicted_depth, predicted_velocity \
                         = custom_loss((phi_batch[j])[:,None], deltas_and_time[1:])
+                    global count
+                    count += 1
 
-                    if counter %10 == 0:
+                    actual_depth  = z_zero[j].cpu().numpy()
+                    content = '{}: {}: loss {:.4f} z_gt {:.4f} z_predicted {:.4f}'.format(epoch, batches_num*i+j, loss.item()/1000, actual_depth, predicted_depth.data[0])
+
+                    training_file.write(content)
+                    training_file.write('\n')
+
+                    if count %10 == 0:
                         z_dot_zero_tensor = (z_dot_zero[j]).to(device)
                         delta_accel_arr_gpu = delta_accel_arr.to(device)
                         z_zero_gpu = z_zero[j].to(device)
@@ -207,7 +218,8 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                         delta_accel_actual_numpy = delta_accel_actual.detach().cpu().numpy()
                         delta_accel_from_phi_numpy = delta_accel_from_phi.detach().cpu().numpy()
 
-                        fig,axs =plt.subplots(nrows=3, ncols = 1, sharey = True,figsize = (10,15))
+                        fig,axs =plt.subplots(nrows=4, ncols = 1, sharey = True,figsize = (10,15))
+                        axs[3].get_shared_y_axes().remove(axs[3])
                         axs[0].plot(time_copy[1:], delta_accel_actual_numpy, label='actual_delta')
                         axs[0].plot(time_copy[1:],delta_accel_from_phi_numpy, label='predicted_delta')
                         axs[0].legend()
@@ -217,25 +229,32 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                         axs[2].plot(time_copy,(-dz0), label='-actual_dz0*t')
                         axs[2].plot(time_copy,(-dz0_predicted), label='-predicted_dz0*t')
                         axs[2].legend()
-                    
+                        axs[3].plot(time_copy,phi_gt, label='phi_gt')
+                        axs[3].plot(time_copy[1:],phi_hat, label='phi_hat')
+                        axs[3].legend()
+
                         plt.savefig(path + "training_set/epoch_" + str(epoch) + "_train_number_" + str(batches_num*i+j) + "_.png",bbox_inches='tight')
                         # fig.clear()
-                        # plt.close(fig)
+                        plt.close(fig)
                         # fig.clear()
                         # plt.close(axs)
                         # plt.show()
                         # plt.clf()
                         # plt.figure.clear()
-                        plt.close()
-                        plt.cla()
-                        plt.clf()
+                        
+                        # plt.cla()
+                        # plt.clf()
+                        # plt.close('all')
+                        # plt.close()
+                        # gc.collect()
 
+                    # print(count)
                     batch_loss += loss
-                    counter += 1
+                # counter = 0 
 
-                return batch_loss
+                return batch_loss/batches_num
             
-            def run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero) -> torch.tensor:
+            def run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,path,i,epoch) -> torch.tensor:
                 with torch.no_grad():
                     batches_num = img_batches.shape[0]
                     batch_loss = torch.tensor([0.0]).to(device)
@@ -260,27 +279,36 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                         
                         loss,delta_accel_from_phi,delta_accel_actual,predicted_depth, predicted_velocity \
                             = custom_loss((phi_batch[j])[:,None], deltas_and_time[1:])
+                        global count
+                        count += 1
 
-                        if counter %10 == 0:
+                        actual_depth  = z_zero[j].cpu().numpy()
+                        content = '{}: {}: loss {:.4f} z_gt {:.4f} z_predicted {:.4f}'.format(epoch, batches_num*i+j, loss.item()/1000, actual_depth, predicted_depth.data[0])
+                        
+                        validation_file.write(content)
+                        validation_file.write('\n')
+
+                        if count %10 == 0:
 
                             z_dot_zero_tensor = (z_dot_zero[j]).to(device)
                             delta_accel_arr_gpu = delta_accel_arr.to(device)
                             z_zero_gpu = z_zero[j].to(device)
                             phi_actual = torch.tensor(1 + z_dot_zero_tensor/z_zero_gpu + delta_accel_arr_gpu/z_zero_gpu).to(device)
 
-                            phi_hat = phi_batch[j].detach().cpu().numpy().flatten()
-                            phi_gt = phi_actual.detach().cpu().numpy()
+                            phi_hat = phi_batch[j].cpu().numpy().flatten()
+                            phi_gt = phi_actual.cpu().numpy()
 
-                            z0  = z_zero[j].detach().cpu().numpy()
-                            dz0 = z_dot_zero_tensor.detach().cpu().numpy().flatten()
-                            z0_predicted = predicted_depth.detach().cpu().numpy()
-                            time_copy = time_arr.detach().cpu().numpy().flatten()
-                            dz0_predicted = (predicted_velocity.detach().cpu().numpy().flatten())*(time_copy)
+                            z0  = z_zero[j].cpu().numpy()
+                            dz0 = z_dot_zero_tensor.cpu().numpy().flatten()
+                            z0_predicted = predicted_depth.cpu().numpy()
+                            time_copy = time_arr.cpu().numpy().flatten()
+                            dz0_predicted = (predicted_velocity.cpu().numpy().flatten())*(time_copy)
 
-                            delta_accel_actual_numpy = delta_accel_actual.detach().cpu().numpy()
-                            delta_accel_from_phi_numpy = delta_accel_from_phi.detach().cpu().numpy()
+                            delta_accel_actual_numpy = delta_accel_actual.cpu().numpy()
+                            delta_accel_from_phi_numpy = delta_accel_from_phi.cpu().numpy()
 
-                            fig,axs =plt.subplots(nrows=3, ncols = 1, sharey = True,figsize = (10,15))
+                            fig,axs =plt.subplots(nrows=4, ncols = 1, sharey = True,figsize = (10,15))
+                            axs[3].get_shared_y_axes().remove(axs[3])
                             axs[0].plot(time_copy[1:], delta_accel_actual_numpy, label='actual_delta')
                             axs[0].plot(time_copy[1:],delta_accel_from_phi_numpy, label='predicted_delta')
                             axs[0].legend()
@@ -290,58 +318,68 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                             axs[2].plot(time_copy,(-dz0), label='-actual_dz0*t')
                             axs[2].plot(time_copy,(-dz0_predicted), label='-predicted_dz0*t')
                             axs[2].legend()
+                            axs[3].plot(time_copy,phi_gt, label='phi_gt')
+                            axs[3].plot(time_copy[1:],phi_hat, label='phi_hat')
+                            axs[3].legend()
                         
-                            plt.savefig(path + "validation_set/epoch_" + str(epoch) + "_train_number_" + str(batches_num*i+j) + "_.png",bbox_inches='tight')
+                            plt.savefig(path + "validation_set/epoch_" + str(epoch) + "_val_number_" + str(batches_num*i+j) + "_.png",bbox_inches='tight')
                             
                             # fig.clear()
-                            # plt.close(fig)
+                            plt.close(fig)
                             # axs.clear()
                             # plt.close(axs)
                             # plt.show()
                             # plt.clf()
 
                             # plt.figure.clear()
-                            plt.close()
-                            plt.cla()
-                            plt.clf()
+                            # plt.close()
+                            # plt.cla()
+                            # plt.clf()
+                            # plt.close('all')
+                            # gc.collect()
 
+                        # print(count)
                         batch_loss += loss
 
-                return batch_loss
+                return batch_loss/batches_num
 
             
             sum_of_train_loss = 0
             sum_of_val_loss = 0
             
-            counter = 0
+            global count 
+            count = 0
             # One epoch of training loop
             for i, data in enumerate(TrainLoader):
                 
                 img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
                 # print(img_batches.shape)
-                batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,counter,path,i,epoch)
+                batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,path,i,epoch)\
+                     * batch_size_train
                 batch_loss.backward()
                 optimizer.step()
                 optimizer.zero_grad()
 
                 sum_of_train_loss += batch_loss.item()
+
             
-            counter = 0
+            count = 0
             # One epoch of validation loop
             for i, data in enumerate(ValidationLoader):
                 # print(i)
                 img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
                 
-                batch_loss = run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,counter,path,i,epoch)
+                batch_loss = run_batch_val(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,path,i,epoch)\
+                     * batch_size_val
 
                 sum_of_val_loss += batch_loss.item()
 
-            
+            torch.save(model.state_dict(), path + "weights/model_weight" + str(epoch) + ".hdf5")
             print('epoch: {} avg_train_loss: {:.4f} avg_val_loss: {:.4f}'\
-                .format(epoch, sum_of_train_loss / (len(TrainLoader) * batch_size_train), \
-                    sum_of_val_loss / (len(ValidationLoader) * batch_size_val)))
-            writer.add_scalars('Losses during training', {'avg training loss':sum_of_train_loss / (len(TrainLoader) * batch_size_train),
-                                        'avg validation loss':sum_of_val_loss / (len(ValidationLoader) * batch_size_val)}, epoch)
+                .format(epoch, sum_of_train_loss / (len(TrainLoader) * batch_size_train * 1000), \
+                    sum_of_val_loss / (len(ValidationLoader) * batch_size_val * 1000)))
+            writer.add_scalars('Losses during training', {'avg training loss':sum_of_train_loss / (len(TrainLoader) * batch_size_train * 1000),
+                                        'avg validation loss':sum_of_val_loss / (len(ValidationLoader) * batch_size_val * 1000)}, epoch)
             sum_of_train_loss = 0
             sum_of_val_loss = 0
 

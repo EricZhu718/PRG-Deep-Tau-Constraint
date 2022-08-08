@@ -48,6 +48,7 @@ from PIL import Image
 from torch import tensor
 
 def get_bounding_box(single_img:tensor) -> tuple:
+    # single_img = single_img.numpy()
     if single_img.shape[0] == 3:
         single_img = single_img.permute(1,2,0)
     target = np.where(((single_img[:,:,0] < 255) & (single_img[:,:,1] < 255) & (single_img[:,:,2] < 255)))
@@ -57,8 +58,6 @@ def get_bounding_box(single_img:tensor) -> tuple:
     max_y = np.max(target[0])
 
     return ((min_x, min_y), (max_x, max_y))
-
-
 
 # WARNING PIXEL VALUES ASSUME ORIGIN IS AT THE CENTER OF THE SCREEN 
 def calculate_phi(p1, p2, p3, p1_new, p2_new, p3_new):

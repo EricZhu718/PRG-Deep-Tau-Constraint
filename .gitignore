@@ -4,3 +4,4 @@ saves/
 runs/
 yolov7/
 traced_model.pt
+try.py

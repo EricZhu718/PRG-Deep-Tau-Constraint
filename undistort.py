@@ -6,6 +6,7 @@ import glob
 from interpolate import get_interpolation
 import pandas as pd
 import matplotlib.pyplot as plt
+import copy
 
 def undistort(path:string):
     
@@ -19,6 +20,7 @@ def undistort(path:string):
     for image in glob.glob(path + '/dso/cam0/images/*.png'):
         images.append(image)
     images.sort()
+    images = images
     frame_times = pd.read_csv(path + '/mav0/cam0/data.csv')
     rot_interp = get_interpolation(path)
     i = 0
@@ -36,35 +38,71 @@ def undistort(path:string):
         images.remove(images[0])
 
     plt.ion()
+    xyz= np.asarray([[[[column], [row], [1]] for column in range(512)] for row in range(512)])
     for image in images:
+        
         def derotate_image(frame, K, rot_mat):
+
+            # R = copy.deepcopy(rot_mat)
+
             R_fc_to_c = rot_mat.T
+
             #R_c_to_fc = DCM(q=q_c_to_fc)
             #R_fc_to_c = R_c_to_fc.A.transpose()
 
             # Derive this by considering p1 = (K R K_inv) (Z(X)/Z(RX)) p0
+            # x, y = np.meshgrid(np.linspace(0,511,512), np.linspace(0,511,512))
 
-            print(frame.shape)
+            # x = np.fromfunction(lambda i, j: j % 512, (1, 512**2))[0]
+            # # print(x)
+            # y = np.fromfunction(lambda i, j: j // 512, (1, 512**2))[0]
+            # # print(y)
+            # z = np.ones((1, 512**2))[0]
+            # # print(z)
+            # xyz = np.vstack((x,y,z))
 
-            frame_for_derotation = np,deepcopy(frame)
+            
 
-            print(frame_for_derotation)
+            # print(xyz[10][0])
 
+            mask = ((rot_mat @ np.linalg.inv(K) @ xyz)[:,:,2,0] > 0).astype(np.uint8)
+            # print(mask)
+            
+            # print(R_fc_to_c @ np.linalg.inv(K) @ xyz[10,0])
+            # print(__)
+            # print(y)
 
-            derotated_pixels = R_fc_to_c @ np.linalg.inv(K) @ frame_for_derotation
+            # derotated_pixels = R_fc_to_c @ np.linalg.inv(K) @ xyz
+            # # print(derotated_pixels)
+            # # print(np.where(derotated_pixels[:2]<0))
+            # # print(derotated_pixels[2] < 0)
+            # # print((derotated_pixels[2] > 0).reshape(512, 512))
 
-            # frame(np.where(derotated_pixels[:2]==0)) = 0
+            # derotated_pixels = np.where(derotated_pixels[:2]<0)
+
+            # bool_mat = derotated_pixels[:512]
+
+            # for i in range(1,512):
+            #     temp = derotated_pixels[i*512:((i+1)*512)]
+            #     bool_mat = np.vstack((bool_mat,temp))
+
+            # # print(bool_mat)
+
+            # frame = frame * (derotated_pixels[2] > 0).reshape(512, 512)
+            # print(frame)
+            
+            frame = (mask * frame)
+            # print(frame)
+            
 
             top_two_rows = (K @ R_fc_to_c @ np.linalg.inv(K))[0:2, :]
             bottom_row = (R_fc_to_c @ np.linalg.inv(K))[2, :]
-
-            
 
             map_pixel_c_to_fc = np.vstack((top_two_rows, bottom_row))
             map_pixel_c_to_fc_opencv = np.float32(map_pixel_c_to_fc.flatten().reshape(3,3))
 
             frame_derotated = cv.warpPerspective(frame, map_pixel_c_to_fc_opencv, (frame.shape[1], frame.shape[0]), flags=cv.WARP_INVERSE_MAP+cv.INTER_LINEAR)
-            return frame_derotated
+            return mask*255,frame_derotated
 
         image = cv.imread(image, 0)
         height,width = image.shape
@@ -93,18 +131,18 @@ def undistort(path:string):
 
         trans_rot_mat = Rcr @ trans_rot_mat @ Rcr.T
 
-        plt.clf()
-        plt.xlim([-1, 1])
-        plt.ylim([-1, 1])
-        # # plt.gca().invert_yaxis()
-        plt.plot([0, trans_rot_mat[0][0]/ (trans_rot_mat[2][0]+1)], [0, -trans_rot_mat[1][0]/ (trans_rot_mat[2][0]+1)], 'r-')
-        plt.plot([0, trans_rot_mat[0][1]/ (trans_rot_mat[2][1]+1)], [0, -trans_rot_mat[1][1]/ (trans_rot_mat[2][1]+1)], 'g-')
-        plt.plot([0, trans_rot_mat[0][2]/ (trans_rot_mat[2][2]+1)], [0, -trans_rot_mat[1][2]/ (trans_rot_mat[2][2]+1)], 'b-')
+        # plt.clf()
+        # plt.xlim([-1, 1])
+        # plt.ylim([-1, 1])
+        # # # plt.gca().invert_yaxis()
+        # plt.plot([0, trans_rot_mat[0][0]/ (trans_rot_mat[2][0]+1)], [0, -trans_rot_mat[1][0]/ (trans_rot_mat[2][0]+1)], 'r-')
+        # plt.plot([0, trans_rot_mat[0][1]/ (trans_rot_mat[2][1]+1)], [0, -trans_rot_mat[1][1]/ (trans_rot_mat[2][1]+1)], 'g-')
+        # plt.plot([0, trans_rot_mat[0][2]/ (trans_rot_mat[2][2]+1)], [0, -trans_rot_mat[1][2]/ (trans_rot_mat[2][2]+1)], 'b-')
         
-        # print((trans_rot_mat[2][2]+1))
-        # print(np.linalg.det(trans_rot_mat))
-        plt.pause(0.01)         
-        plt.show()
+        # # print((trans_rot_mat[2][2]+1))
+        # # print(np.linalg.det(trans_rot_mat))
+        # plt.pause(0.01)         
+        # plt.show()
         
         # trans_rot_mat = np.linalg.inv(trans_rot_mat)
         
@@ -114,14 +152,17 @@ def undistort(path:string):
         # undistorted = undistorted[:, ::-1]
 
         cv.imshow('undistorted',undistorted)
-        
-        cv.imshow('derotated',derotate_image(undistorted, K_new, trans_rot_mat))
+
+        mask, derotated_image = derotate_image(undistorted, K_new, trans_rot_mat)
+        cv.imshow('mask',mask)
+        cv.imshow('derotated',derotated_image)
         # cv.imwrite(directory + str(i) +"derotated.png" , output)
-        cv.waitKey(40)
-        break
+        cv.waitKey(0)
+        # break
         i+=1
 
 if __name__ == '__main__':
+    
     # path = '/home/tau/Desktop/monocular_data/dataset-corridor3_512_16'
 
     # imu_gt = np.array(pd.read_csv(path + '/dso/gt_imu.csv')['# timestamp[ns]'])

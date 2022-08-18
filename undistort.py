@@ -1,4 +1,5 @@
 from copy import deepcopy
+import os
 import string
 import cv2 as cv
 import numpy as np
@@ -9,7 +10,7 @@ import matplotlib.pyplot as plt
 import copy
 
 def undistort(path:string):
-    
+    os.mkdir(path + '/processed_images/', exist_ok=True)
     contents = open(path + '/dso/cam0/camera.txt', "r").read().split(' ')
     contents[8] = contents[8].split('\n')[0]
     camera_params = contents[1:9]
@@ -23,7 +24,7 @@ def undistort(path:string):
     images = images
     frame_times = pd.read_csv(path + '/mav0/cam0/data.csv')
     rot_interp = get_interpolation(path)
-    i = 0
+    
 
     mcap_start_time = pd.read_csv(path + '/mav0/mocap0/data.csv')['#timestamp [ns]'][0]
     frame_start_time = pd.read_csv(path+'/mav0/cam0/data.csv')['#timestamp [ns]'][0]
@@ -39,6 +40,9 @@ def undistort(path:string):
 
     plt.ion()
     xyz= np.asarray([[[[column], [row], [1]] for column in range(512)] for row in range(512)])
+
+    i = 0
+
     for image in images:
         
         def derotate_image(frame, K, rot_mat):
@@ -154,15 +158,18 @@ def undistort(path:string):
         cv.imshow('undistorted',undistorted)
 
         mask, derotated_image = derotate_image(undistorted, K_new, trans_rot_mat)
+        
+        cv.imwrite(path + '/processed_images/' + str(i) + '.png', derotated_image)
+
         cv.imshow('mask',mask)
         cv.imshow('derotated',derotated_image)
         # cv.imwrite(directory + str(i) +"derotated.png" , output)
-        cv.waitKey(0)
-        # break
+        cv.waitKey(1)
+       
         i+=1
 
 if __name__ == '__main__':
-    
+
     # path = '/home/tau/Desktop/monocular_data/dataset-corridor3_512_16'
 
     # imu_gt = np.array(pd.read_csv(path + '/dso/gt_imu.csv')['# timestamp[ns]'])

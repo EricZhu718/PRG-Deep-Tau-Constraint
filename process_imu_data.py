@@ -37,8 +37,9 @@ def process(path:string):
     # print(new_df)
     
     for i in range(len(imu_time_df)):
-        imu_to_world_mat = start_orientation_mat @ imu_rot_interp(imu_time_df[i]).as_matrix() @ \
-            np.linalg.inv(imu_rot_interp(start_time).as_matrix())
+        imu_to_world_mat = start_orientation_mat  @ \
+            np.linalg.inv(imu_rot_interp(start_time).as_matrix()) \
+                @ imu_rot_interp(imu_time_df[i]).as_matrix()
         # print(world_to_imu_mat)
         # print(np.linalg.inv(world_to_imu_mat))
         

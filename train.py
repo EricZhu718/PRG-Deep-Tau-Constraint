@@ -77,7 +77,6 @@ else:
     device = torch.device("cpu")
 print(device)
 
-
 # custom loss function,
 # the my_outputs is a tensor matrix with only 1 column and it represents the phi predictions from our NN
 # deltas_and_times is a tensor matrix with 2 columns: the first one is double integral of acceleration, the second are the time values 
@@ -134,7 +133,7 @@ def least_squares(A:torch.tensor, b:torch.tensor) -> torch.tensor:
 count = 0
 
 def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
-    Epochs = 250, TrainingData = None, ValidationData = None, batch_size_train = 2, \
+    Epochs = 200, TrainingData = None, ValidationData = None, batch_size_train = 2, \
         batch_size_val = 2, writer=None, path=None):
     # set up directory for the run
     # path = '../deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
@@ -146,12 +145,14 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
     try:
         # Training dataloader
-        if TrainingData is None:
-            TrainingData = SplineDataset(Training_Video_Num, frames = Frames)
-        TrainLoader = DataLoader(TrainingData, batch_size_train)
+        # if TrainingData is None:
+        #     TrainingData = SplineDataset(Training_Video_Num, frames = Frames)
+        # TrainLoader = DataLoader(TrainingData, batch_size_train)
 
         # actual training portion
-        model = Model().to(device)
+        model = Model()
+        model.load_state_dict(torch.load('/home/tau/deep_tau_runs/2022-08-08_23:21:42.001165/weights/model_weight95.hdf5'))
+        model = model.to(device)
         optimizer = optim.Adam(model.parameters(),lr=Learning_rate)
 
         # Validation dataloader
@@ -167,8 +168,8 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
 
         validation_file = open(path + "validation.txt","w")
         training_file = open(path + "training.txt","w")
-
-
+        # global RMS_accuracy
+        # RMS_accuracy = np.array([])
         # # training loop
         for epoch in range(Epochs):
             def run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,path,i,epoch) -> torch.tensor:
@@ -203,7 +204,7 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                     training_file.write(content)
                     training_file.write('\n')
 
-                    if count %10 == 0:
+                    if count %1 == 0:
                         z_dot_zero_tensor = (z_dot_zero[j]).to(device)
                         delta_accel_arr_gpu = delta_accel_arr.to(device)
                         z_zero_gpu = z_zero[j].to(device)
@@ -299,8 +300,11 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
                         # print(k.item())
                         actual_depth  = z_zero[j].cpu().numpy()
                         # print(predicted_depth.data[0].item())
-                        content = '{}: {}: loss {:.4f} z_gt {:.4f} z_predicted {:.4f} k {:.4f}'.format(epoch, batches_num*i+j, loss.item()/1000, actual_depth, predicted_depth.data[0].item()*k.item(), k.item())
-                        
+                        # RMS_accuracy.append((actual_depth - predicted_depth.data[0].item()*k.item())**2)
+                        # acc = math.sqrt(np.mean(RMS_accuracy))
+                        content = '{}: {}: loss {:.4f} z_gt {:.4f} z_predicted {:.4f} k {:.4f} accuracy {}'.format(epoch, batches_num*i+j, loss.item()/1000, actual_depth, predicted_depth.data[0].item()*k.item(), k.item() , (actual_depth - predicted_depth.data[0].item()*k.item())/actual_depth * 100)
+
+                        # print('RMS_accuracy = ' + str())
                         validation_file.write(content)
                         validation_file.write('\n')
 
@@ -389,17 +393,17 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
             global count 
             count = 0
             # One epoch of training loop
-            for i, data in enumerate(TrainLoader):
+            # for i, data in enumerate(TrainLoader):
                 
-                img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
-                # print(img_batches.shape)
-                batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,path,i,epoch)\
-                     * batch_size_train
-                batch_loss.backward()
-                optimizer.step()
-                optimizer.zero_grad()
+            #     img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero = data
+            #     # print(img_batches.shape)
+            #     batch_loss = run_batch_train(img_batches, accel_batches, time_batches, delta_accel_batches, z_zero, z_dot_zero,path,i,epoch)\
+            #          * batch_size_train
+            #     batch_loss.backward()
+            #     optimizer.step()
+            #     optimizer.zero_grad()
 
-                sum_of_train_loss += batch_loss.item()
+            #     sum_of_train_loss += batch_loss.item()
 
             
             count = 0
@@ -416,11 +420,11 @@ def train(Training_Video_Num = 1000, Learning_rate = 1e-3, Frames = 100, \
             if epoch%5 == 0:
                 torch.save(model.state_dict(), path + "weights/model_weight" + str(epoch) + ".hdf5")
 
-            print('epoch: {} avg_train_loss: {:.4f} avg_val_loss: {:.4f}'\
-                .format(epoch, sum_of_train_loss / (len(TrainLoader) * batch_size_train * 1000), \
-                    sum_of_val_loss / (len(ValidationLoader) * batch_size_val * 1000)))
-            writer.add_scalars('Losses during training', {'avg training loss':sum_of_train_loss / (len(TrainLoader) * batch_size_train * 1000),
-                                        'avg validation loss':sum_of_val_loss / (len(ValidationLoader) * batch_size_val * 1000)}, epoch)
+            # print('epoch: {} avg_train_loss: {:.4f} avg_val_loss: {:.4f}'\
+            #     .format(epoch, sum_of_train_loss / (len(TrainLoader) * batch_size_train * 1000), \
+            #         sum_of_val_loss / (len(ValidationLoader) * batch_size_val * 1000)))
+            # writer.add_scalars('Losses during training', {'avg training loss':sum_of_train_loss / (len(TrainLoader) * batch_size_train * 1000),
+            #                             'avg validation loss':sum_of_val_loss / (len(ValidationLoader) * batch_size_val * 1000)}, epoch)
             sum_of_train_loss = 0
             sum_of_val_loss = 0
 
@@ -444,13 +448,11 @@ if __name__ == '__main__':
     #     plt.imshow(data[i][3:6].permute(1,2,0).numpy())
     #     plt.show()
 
-
-
-
-    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    # os.mkdir(path)
-    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    os.mkdir(path)
+    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
     # train(TrainingData = load_data_set("/home/tau/Video_Datasets/1000Videos200Frames/"),batch_size_train= 1, writer = writer, path=path, Frames = 200, Training_Video_Num=1000, Epochs=100)
+    train(batch_size_train= 1, writer = writer, path=path, Frames = 200, Training_Video_Num=1000, Epochs=100)
     
     # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
     # os.mkdir(path)
@@ -620,14 +622,14 @@ if __name__ == '__main__':
     # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
     # train(TrainingData = load_data_set( "/home/tau/Video_Datasets/100Videos10Frames/"), batch_size_train=16,writer = writer, path=path,Frames = 10, Training_Video_Num=100, Epochs=200)
     
-    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    os.mkdir(path + 'tensorboard_dir')
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set("/home/tau/Video_Datasets/50Videos10Frames/"), batch_size_train=16,writer = writer, path=path,Frames = 10, Training_Video_Num=50, Epochs=200)
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # os.mkdir(path + 'tensorboard_dir')
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set("/home/tau/Video_Datasets/50Videos10Frames/"), batch_size_train=16,writer = writer, path=path,Frames = 10, Training_Video_Num=50, Epochs=200)
     
-    path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
-    os.mkdir(path)
-    os.mkdir(path + 'tensorboard_dir')
-    writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
-    train(TrainingData = load_data_set("/home/tau/Video_Datasets/20Videos10Frames/"), batch_size_train=16,writer = writer, path=path,Frames = 10, Training_Video_Num=20, Epochs=200)    
+    # path = '/home/tau/deep_tau_runs/' + str(datetime.datetime.now()).replace(' ', '_') + '/'
+    # os.mkdir(path)
+    # os.mkdir(path + 'tensorboard_dir')
+    # writer = SummaryWriter(path + '/'+ 'tensorboard_dir')
+    # train(TrainingData = load_data_set("/home/tau/Video_Datasets/20Videos10Frames/"), batch_size_train=16,writer = writer, path=path,Frames = 10, Training_Video_Num=20, Epochs=200)    

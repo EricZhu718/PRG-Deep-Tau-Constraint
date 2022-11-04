@@ -17,12 +17,8 @@ if __name__ == '__main__':
     image_dir_path = '/home/tau/Desktop/monocular_data/dataset-corridor1_512_16/dso/cam0/undistorted_images'
     image_paths = []
 
-
     reference_index = 0
 
-
-    
-    
     # image_arr = []
     # for path in image_paths:
     #     image_arr.append(cv.imread(path))
@@ -47,8 +43,6 @@ if __name__ == '__main__':
             color = (255, 255, 255)
             thickness = 1
             
-            
-
             plt.clf()
             plt.xlim([-1, 1])
             plt.ylim([-1, 1])
@@ -57,7 +51,6 @@ if __name__ == '__main__':
             plt.plot([0, rot_mat[0][2]/ (rot_mat[2][2]+2)], [0, -rot_mat[1][2]/ (rot_mat[2][2]+2)], 'b-')
             plt.plot([0, delta_vels[0]/ (delta_vels[2]+2) * 0.25], [0, -delta_vels[1]/ (delta_vels[2]+2) * 0.25], '-p')
             plt.plot()
-
 
             plt.pause(0.01)
             
@@ -70,14 +63,12 @@ if __name__ == '__main__':
             # cv.putText(image, 'x_vel_delta:' + str(delta_vels[0])[0:4], (50,25), cv.FONT_HERSHEY_SIMPLEX, fontScale, color, thickness, cv.LINE_AA)
             # cv.putText(image, 'y_vel_delta:' + str(delta_vels[1])[0:4], (50,50), cv.FONT_HERSHEY_SIMPLEX, fontScale, color, thickness, cv.LINE_AA)
             # cv.putText(image, 'z_vel_delta:' + str(delta_vels[2])[0:4], (50,75), cv.FONT_HERSHEY_SIMPLEX, fontScale, color, thickness, cv.LINE_AA)
-            
-        
         
         cv.imshow('test', image)
         cv.waitKey(0)
 
     
-    x_vel_delta = interp1d()
+    # x_vel_delta = interp1d()
 
 
 

@@ -100,7 +100,7 @@ class Model(nn.Module):
         self.relu1 = nn.Tanh()
         self.fc2 = nn.Linear(1024,64)
         self.relu2 = nn.Tanh()
-        self.fc3 = nn.Linear(64, 1)
+        self.fc3 = nn.Linear(64, 3)
 
     def forward(self,x):
         

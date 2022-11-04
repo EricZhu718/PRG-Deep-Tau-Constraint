@@ -5,8 +5,8 @@ import pandas as pd
 
 
 
-
 def get_interpolation(path:string):
+    
     position_file = pd.read_csv(path + '/mav0/imu0/data.csv')
     time_diff_secs = np.array(position_file['#timestamp [ns]'])[1:] - np.array(position_file['#timestamp [ns]'])[0:-1]
     time_diff_secs = np.array(time_diff_secs, dtype=float)

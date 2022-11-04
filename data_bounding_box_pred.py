@@ -16,37 +16,16 @@ import math
 from torch import scalar_tensor
 import time
 import copy
-
+import pandas as pd
 # from google.colab import drive, files
 import os
 import sys
 import torch
-import pytorch3d
 import warnings
 warnings.filterwarnings('ignore')
 
 import matplotlib.pyplot as plt
 
-# Util function for loading meshes
-from pytorch3d.io import load_objs_as_meshes, load_obj
-
-# Data structures and functions for rendering
-from pytorch3d.structures import Meshes
-# from pytorch3d.vis.plotly_vis import AxisArgs, plot_batch_individually, plot_scene
-from pytorch3d.vis.texture_vis import texturesuv_image_matplotlib
-from pytorch3d.renderer import (
-    look_at_view_transform,
-    FoVPerspectiveCameras, 
-    PointLights, 
-    DirectionalLights, 
-    Materials, 
-    RasterizationSettings, 
-    MeshRenderer, 
-    MeshRasterizer,  
-    SoftPhongShader,
-    TexturesUV,
-    TexturesVertex
-)
 import sys
 import os
 import math
@@ -59,15 +38,13 @@ import torch.utils.tensorboard
 from torch.utils.tensorboard import SummaryWriter
 from sklearn.linear_model import LinearRegression
 
-
-
 # access cuda
 if torch.cuda.is_available():
     device = torch.device("cuda:0")
     torch.cuda.set_device(device)
 else:
     device = torch.device("cpu")
-
+ 
 # Function takes position, velocity, and acceleration functions and returns images and array of information
 def render_from_func(physical_scale, camera_pos_func, camera_vel_func, \
     camera_accel_func, time_step = 1/10, max_time = 0.1):
@@ -358,12 +335,12 @@ def fit_cubic_spline_through_sequence(points_list, vel_list, time_list):
 
   return (full_spline_pos, full_spline_vel, full_spline_accel)
 
+
 random_values_from_0_to_1 = np.random.rand(10000)
 random_time_index = 0
 def get_spline_video(num = 5, xy_bound= 0.45, z_lower = 1.5, z_upper = 5, frames = 100):
   global random_values_from_0_to_1
   global random_time_index
-  
   
   points = np.array([[random.uniform(-xy_bound, xy_bound), \
     random.uniform(-xy_bound, xy_bound), random.uniform(z_lower, z_upper)] for i in range(num)])
@@ -404,6 +381,7 @@ def get_spline_video(num = 5, xy_bound= 0.45, z_lower = 1.5, z_upper = 5, frames
     # print(str((time[1] - time[0]) / num_points * i + time[0]) + ", " + str(spline_points[-1]))
   spline_time.sort()
 
+
   for i in range(len(spline_time)):
       spline_points.append(spline_pos_func(spline_time[i]))
       spline_vel.append(spline_vel_func(spline_time[i]))
@@ -427,17 +405,25 @@ class SplineDataset(Dataset):
           print('generated ' + str(i) + ' videos')
         img_arr, accel_arr, time_arr, delta_accel_arr, z_zero, z_dot_zero \
             = (get_spline_video(num=8, frames = frames))
+
         img_arr = torch.tensor(img_arr)
         arr_of_doubles = []
 
         for k in range(1, len(img_arr)):
+            
             double_img = torch.cat((img_arr[0], img_arr[k]),2)
-            double_img = torch.reshape(double_img,(1,double_img.shape[2],double_img.shape[0], double_img.shape[1]))
+            double_img = double_img.permute(2,0,1)[None,:]
+            # plt.imshow(double_img[i][0:3].permute(1,2,0).numpy())
+            # plt.imshow(double_img[i][3:6].permute(1,2,0).numpy())
+            # plt.show()
+
             arr_of_doubles.append(double_img)
+
 
         tensor_of_doubles = torch.cat(tuple(double for double in arr_of_doubles), 0)
 
         self.data.append((tensor_of_doubles, accel_arr, time_arr, delta_accel_arr, z_zero, z_dot_zero))
+
 
     def __len__(self):
         return self.size
@@ -448,3 +434,108 @@ class SplineDataset(Dataset):
     
     def __getitem__(self, index):
         return self.data[index]
+
+
+class DirectoryLoadedDataset(Dataset):
+  
+  def __init__(self, dir_path):
+    num_files = len(os.listdir(dir_path))
+    self.data = [None for i in range(num_files)]
+    if dir_path[-1] != '/':
+      dir_path += '/'
+    counter = 0
+    for file in os.listdir(dir_path):
+      # print(file)
+      self.data[counter] = torch.load(dir_path + file)
+      counter += 1
+    
+  def __len__(self):
+    return len(self.data)
+    
+  def __getitem__(self, index):
+    return self.data[index]
+
+
+def save_data_set(dataset:Dataset, directory_name:str) -> None:
+  try:
+    os.mkdir(directory_name)
+  finally:
+    for i in range(len(dataset)):
+      if directory_name[-1] == '/':
+        path = directory_name + str(i)
+      else:
+        path = directory_name + '/' + str(i)
+      torch.save(dataset.__getitem__(i), path)
+
+# directory must only contain tensor files, no directories
+def load_data_set(directory_name:str) -> Dataset:
+  print('loading data from ' + directory_name)
+  return DirectoryLoadedDataset(directory_name)
+
+def image_dataset():
+
+  img_arr = []
+  accel_arr = []
+  delta_arr = []
+  time_arr = []
+  delta_accel_arr = []
+
+
+  for i in range(20):    
+
+    image = cv2.imread('/home/tau/Desktop/monocular_data/dataset-corridor1_512_16/processed_images/undistorted_images/' + ('0' * (5 - len(str(i))) + str(i)) + '.png', 0)
+    img_arr.append(np.array(image))
+
+  data = pd.read_csv('/home/tau/Desktop/monocular_data/dataset-corridor1_512_16/reference_frame_index_140/data.csv')
+  accel_arr = np.array(data['z_accel'][:20])
+  time_arr = np.array(data['time_stamp'][:20])
+  delta_accel_arr = np.array(data['z_delta'][:20])
+
+  # print(accel_arr)
+  return [img_arr, accel_arr, time_arr, delta_accel_arr]
+            
+if __name__ == '__main__':
+
+  image_dataset()
+  
+  # save_data_set(SplineDataset(1000, frames = 200), "../Video_Datasets/1000Videos200Frames/")
+  # save_data_set(SplineDataset(1000, frames = 150), "../Video_Datasets/1000Videos150Frames/")
+  # save_data_set(SplineDataset(750, frames = 150), "../Video_Datasets/750Videos150Frames/")
+  # save_data_set(SplineDataset(500, frames = 150), "../Video_Datasets/500Videos150Frames/")
+  # save_data_set(SplineDataset(250, frames = 150), "../Video_Datasets/250Videos150Frames/")
+  # save_data_set(SplineDataset(100, frames = 150), "../Video_Datasets/100Videos150Frames/")
+  # save_data_set(SplineDataset(50, frames = 150), "../Video_Datasets/50Videos150Frames/")
+  # save_data_set(SplineDataset(20, frames = 150), "../Video_Datasets/20Videos150Frames/")
+
+  # save_data_set(SplineDataset(1000, frames = 100), "../Video_Datasets/1000Videos100Frames/")
+  # save_data_set(SplineDataset(750, frames = 100), "../Video_Datasets/750Videos100Frames/")
+  # save_data_set(SplineDataset(500, frames = 100), "../Video_Datasets/500Videos100Frames/")
+  # save_data_set(SplineDataset(250, frames = 100), "../Video_Datasets/250Videos100Frames/")
+  # save_data_set(SplineDataset(100, frames = 100), "../Video_Datasets/100Videos100Frames/")
+  # save_data_set(SplineDataset(50, frames = 100), "../Video_Datasets/50Videos100Frames/")
+  # save_data_set(SplineDataset(20, frames = 100), "../Video_Datasets/20Videos100Frames/")
+
+  # save_data_set(SplineDataset(1000, frames = 50), "../Video_Datasets/1000Videos50Frames/")
+  # save_data_set(SplineDataset(750, frames = 50), "../Video_Datasets/750Videos50Frames/")
+  # save_data_set(SplineDataset(500, frames = 50), "../Video_Datasets/500Videos50Frames/")
+  # save_data_set(SplineDataset(250, frames = 50), "../Video_Datasets/250Videos50Frames/")
+  # save_data_set(SplineDataset(100, frames = 50), "../Video_Datasets/100Videos50Frames/")
+  # save_data_set(SplineDataset(50, frames = 50), "../Video_Datasets/50Videos50Frames/")
+  # save_data_set(SplineDataset(20, frames = 50), "../Video_Datasets/20Videos50Frames/")
+
+  # save_data_set(SplineDataset(1000, frames = 20), "../Video_Datasets/1000Videos20Frames/")
+  # save_data_set(SplineDataset(750, frames = 20), "../Video_Datasets/750Videos20Frames/")
+  # save_data_set(SplineDataset(500, frames = 20), "../Video_Datasets/500Videos20Frames/")
+  # save_data_set(SplineDataset(250, frames = 20), "../Video_Datasets/250Videos20Frames/")
+  # save_data_set(SplineDataset(100, frames = 20), "../Video_Datasets/100Videos20Frames/")
+  # save_data_set(SplineDataset(50, frames = 20), "../Video_Datasets/50Videos20Frames/")
+  # save_data_set(SplineDataset(20, frames = 20), "../Video_Datasets/20Videos20Frames/")
+
+  # save_data_set(SplineDataset(1000, frames = 10), "../Video_Datasets/1000Videos10Frames/")
+  # save_data_set(SplineDataset(750, frames = 10), "../Video_Datasets/750Videos10Frames/")
+  # save_data_set(SplineDataset(500, frames = 10), "../Video_Datasets/500Videos10Frames/")
+  # save_data_set(SplineDataset(250, frames = 10), "../Video_Datasets/250Videos10Frames/")
+  # save_data_set(SplineDataset(100, frames = 10), "../Video_Datasets/100Videos10Frames/")
+  # save_data_set(SplineDataset(50, frames = 10), "../Video_Datasets/50Videos10Frames/")
+  # save_data_set(SplineDataset(20, frames = 10), "../Video_Datasets/20Videos10Frames/")
+

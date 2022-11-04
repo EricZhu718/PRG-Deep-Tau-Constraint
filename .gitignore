@@ -1,7 +1,7 @@
 Video_Datasets/
-deep_tau_runs
-saves/
-runs/
-yolov7/
+# deep_tau_runs
+# saves/
+# runs/
+# yolov7/
 traced_model.pt
-try.py
+# try.py

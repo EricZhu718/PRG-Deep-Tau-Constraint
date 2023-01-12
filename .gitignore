@@ -4,4 +4,4 @@ Video_Datasets/
 # runs/
 # yolov7/
 traced_model.pt
-# try.py
+try.py

@@ -39,7 +39,7 @@ print(device)
 # custom loss function,
 # the my_outputs is a tensor matrix with only 1 column and it represents the phi predictions from our NN
 # deltas_and_times is a tensor matrix with 2 columns: the first one is double integral of acceleration, the second are the time values 
-def custom_loss(phi_hat, deltas_and_times): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
+def custom_loss(phi_hat, deltas_and_times,image1, image2): # my_outputs are the phi output approximations, auxillary_info are the time and delta info
     # print("hi")
     # print(my_outputs.size())
     phi_hat.reshape(phi_hat.size()[0], 1)
@@ -68,7 +68,6 @@ def custom_loss(phi_hat, deltas_and_times): # my_outputs are the phi output appr
     # print(Z_and_Z_vel)
     return residues, delta_accel_from_phi, deltas, Z_and_Z_vel[0], Z_and_Z_vel[1]  # returns the norm of the residue vector (ie square all the terms and add them together)
 
-
 def least_squares(A:torch.tensor, b:torch.tensor) -> torch.tensor:
     if len(A.shape) == 1:
         A = A.reshape((A.shape[0], 1))
@@ -95,7 +94,7 @@ def train(Learning_rate = 1e-3,Epochs = 200, TrainingData = None, batch_size_tra
 
         # actual training portion
         model = Model()
-        model.load_state_dict(torch.load('/home/tau/deep_tau_runs/2022-08-08_23:21:42.001165/weights/model_weight95.hdf5'))
+        # model.load_state_dict(torch.load('/home/tau/deep_tau_runs/2022-08-08_23:21:42.001165/weights/model_weight95.hdf5'))
         model = model.to(device)
         optimizer = optim.Adam(model.parameters(),lr=Learning_rate)
 
@@ -116,7 +115,7 @@ def train(Learning_rate = 1e-3,Epochs = 200, TrainingData = None, batch_size_tra
                     
                     first_image = False
 
-                    det = torch.load('/home/tau/Desktop/det_tensor/det_tensor.pt')
+                    det = torch.load('~/Desktop/Tau_constaint/monocular_data/det_tensor.pt')
 
                     for *xyxy, conf, cls in reversed(det):
 
@@ -144,7 +143,7 @@ def train(Learning_rate = 1e-3,Epochs = 200, TrainingData = None, batch_size_tra
                     deltas_and_time = torch.cat((torch.reshape(delta_accel_arr, (-1,1)), torch.reshape(time_arr, (-1,1))), 1).to(device)
                     
                     loss,delta_accel_from_phi,delta_accel_actual,predicted_depth, predicted_velocity \
-                        = custom_loss((phi_batch[j])[:,None], deltas_and_time[1:])
+                        = custom_loss((phi_batch[j])[:,None], deltas_and_time[1:],crop_images1,crop_images2)
                     global count
                     count += 1
 

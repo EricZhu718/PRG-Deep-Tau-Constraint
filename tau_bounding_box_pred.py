@@ -35,9 +35,6 @@ from utils.plots import plot_one_box
 from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
 
-# def crop_object(image,P):
-
-
 def undistort(path:string):
     os.makedirs(path + '/processed_images/', exist_ok=True)
     contents = open(path + '/dso/cam0/camera.txt', "r").read().split(' ')

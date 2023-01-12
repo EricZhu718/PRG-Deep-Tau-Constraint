@@ -27,12 +27,12 @@ import sys
 
 sys.path.append('yolov7')
 
-from models.experimental import attempt_load
-from utils.datasets import LoadStreams, LoadImages
-from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
-    scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
-from utils.plots import plot_one_box
-from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
+# from models.experimental import attempt_load
+# from utils.datasets import LoadStreams, LoadImages
+# from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
+#     scale_coords, xyxy2xywh, strip_optimizer, set_logging, increment_path
+# from utils.plots import plot_one_box
+# from utils.torch_utils import select_device, load_classifier, time_synchronized, TracedModel
 
 def undistort(path:string):
     os.makedirs(path + '/processed_images/', exist_ok=True)
@@ -93,6 +93,7 @@ def undistort(path:string):
     center_curr = np.array((0,0))
     a = 0
     # image = image[200:]
+    ref_obj_image = np.zeros((0,0),dtype = np.uint8)
    
     for image in images:
         # if i < 126:
@@ -145,100 +146,110 @@ def undistort(path:string):
         # cv.imshow('derotated', derotated_image)
         # cv.waitKey(0)
 
-        cv.imwrite(path + '/processed_images/derotated_images' + ('0' * (5-len(str(i)))) + str(i) + '.png', derotated_image)
+        cv.imwrite(path + '/processed_images/derotated_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', derotated_image)
         # cv.imshow('derotated_images',derotated_image)
         # cv.waitKey(10)
-        
-        os.system('python3 yolov7/detect2.py \
-                    --weights object_detector_weights/yolov7.pt \
-                    --source ' + path + '/processed_images/derotated_images' + ('0' * (5-len(str(i)))) + str(i) + '.png')
+        img_name = '0' * (5-len(str(i))) + str(i)
+        os.system('python3 /home/pradip/Desktop/Tau_constaint/PRG-Deep-Tau-Constraint/yolov7/detect2.py \
+                    --weights /home/pradip/Desktop/Tau_constaint/PRG-Deep-Tau-Constraint/object_detector_weights/yolov7.pt \
+                    --source ' + path + '/processed_images/derotated_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png')
+                    # '--imagename' + img_name)
         
         processed_image = cv.imread(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
-        # yolo = cv.imread('/home/tau/Documents/GitHub/PRG-Deep-Tau-Constraint/runs/detect/exp/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
+        yolo = cv.imread('/home/pradip/Desktop/Tau_constaint/PRG-Deep-Tau-Constraint/runs/detect/exp/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
 
-        det = torch.load('/home/tau/Desktop/det_tensor/det_tensor.pt')
-        # print('det from undistort')
-        # print(det)
+        # # print('det from undistort')
+        # # print(det)
         im0_copy = copy.deepcopy(derotated_image) 
-        # im0_copy = copy.deepcopy(derotated_image) 
+        # # im0_copy = copy.deepcopy(derotated_image) 
         res = np.zeros((im0_copy.shape),dtype = np.uint8)
         im_draw = copy.deepcopy(derotated_image) 
-        for *xyxy, conf, cls in reversed(det):
+        
+        try : 
+            det = torch.load('/home/pradip/Desktop/Tau_constaint/det_tensor/' + img_name + '.pt', map_location=torch.device('cpu'))
+        
+            for *xyxy, conf, cls in reversed(det):
+    
+                im0_copy = copy.deepcopy(derotated_image) 
+            #     # im0_copy = copy.deepcopy(derotated_image) 
+            #     # res = np.zeros((im0_copy.shape),dtype = np.uint8)
+                # im_draw = copy.deepcopy(derotated_image) 
+            #     # cv.imshow('derotated_image', im_draw)
 
-            im0_copy = copy.deepcopy(derotated_image) 
-            # im0_copy = copy.deepcopy(derotated_image) 
-            # res = np.zeros((im0_copy.shape),dtype = np.uint8)
-            im_draw = copy.deepcopy(derotated_image) 
-            # cv.imshow('derotated_image', im_draw)
+                c1, c2 = (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3]))
+            #     # cv.rectangle(im_draw,c1,c2,(0,0,255),1)
+            #     # cv.imshow('yolo', im_draw)
+            #     # cv.waitKey(0)
 
-            c1, c2 = (int(xyxy[0]), int(xyxy[1])), (int(xyxy[2]), int(xyxy[3]))
-            # cv.rectangle(im_draw,c1,c2,(0,0,255),1)
-            # cv.imshow('yolo', im_draw)
-            # cv.waitKey(0)
+                if counter == 0:                         ###
 
-            if counter == 0:                         ###
+                    confidance = max(conf,confidance)    ###
 
-                confidance = max(conf,confidance)    ###
+                    if confidance == conf:             
 
-                if confidance == conf:             
+                        center_ref[0] = c1[1] + (c2[1]-c1[1])/2
+                        center_ref[1] = c1[0] + (c2[0]-c1[0])/2
 
-                    center_ref[0] = c1[1] + (c2[1]-c1[1])/2
-                    center_ref[1] = c1[0] + (c2[0]-c1[0])/2
+                        res = copy.deepcopy(im0_copy)
+                        # final_image = cv.hconcat([processed_image,yolo,im0_copy])
+                        # cv.imshow('final_image', final_image)
+                        # cv.waitKey(0)
+                        # cv.destroyAllWindows()
+                        
+                        res[:c1[1],:] = 0 ###
+                        
+                        res[:,:c1[0]] = 0 ###
+                        res[c2[1]:,:] = 0 ###
+                        res[:,c2[0]:] = 0 ###
+                        
+                        center_prev = center_ref
+                        center_curr = center_prev
+                        
+                        ref_obj_image = res
 
-                    res = copy.deepcopy(im0_copy)
-                    # final_image = cv.hconcat([processed_image,yolo,im0_copy])
-                    # cv.imshow('final_image', final_image)
-                    # cv.waitKey(0)
-                    # cv.destroyAllWindows()
-                    
-                    res[:c1[1],:] = 0 ###
-                    
-                    res[:,:c1[0]] = 0 ###
-                    res[c2[1]:,:] = 0 ###
-                    res[:,c2[0]:] = 0 ###
-                    
-                    center_prev = center_ref
-                    center_curr = center_prev
+                        # final_image = cv.hconcat([processed_image,yolo,res])
+                        # cv.imshow('final_image', final_image)
+                        # cv.waitKey(0)
+                        # cv.destroyAllWindows()
 
-                    # final_image = cv.hconcat([processed_image,yolo,res])
-                    # cv.imshow('final_image', final_image)
-                    # cv.waitKey(0)
-                    # cv.destroyAllWindows()
+            #                 # res = im0_copy
 
-        #                 # res = im0_copy
+                else:
 
-            else:
+                    center = np.array((0,0))
+                    center[0] = c1[1] + (c2[1]-c1[1])/2
+                    center[1] = c1[0] + (c2[0]-c1[0])/2
 
-                center = np.array((0,0))
-                center[0] = c1[1] + (c2[1]-c1[1])/2
-                center[1] = c1[0] + (c2[0]-c1[0])/2
+                    l2 = np.linalg.norm(center - center_ref)
+                    l2_prev_center = np.linalg.norm(center - center_prev)
 
-                l2 = np.linalg.norm(center - center_ref)
-                l2_prev_center = np.linalg.norm(center - center_prev)
+                    if l2 < l2_ref and l2_prev_center < 10: 
 
-                if l2 < l2_ref and l2_prev_center < 10: 
+                        l2_ref = l2
+                        center_curr = center
+                        res = copy.deepcopy(im0_copy)
+                        res[:c1[1],:] = 0 ###
+                        res[:,:c1[0]] = 0 ###
+                        res[c2[1]:,:] = 0 ###
+                        res[:,c2[0]:] = 0 ###
+        
+            # #     # res += im0_copy ###
+            # #         # cv2.circle(img=im0,center=c2,radius=2,color=(255,255,255),thickness= 0) ###
+            # #         # cv2.circle(img=im0,center=c1,radius=2,color=(255,255,255),thickness= 0) ###
+            # print(processed_image.shape)
+            # print(yolo.shape)
+            # print(res.shape)
 
-                    l2_ref = l2
-                    center_curr = center
-                    res = copy.deepcopy(im0_copy)
-                    res[:c1[1],:] = 0 ###
-                    res[:,:c1[0]] = 0 ###
-                    res[c2[1]:,:] = 0 ###
-                    res[:,c2[0]:] = 0 ###
-       
-        # #     # res += im0_copy ###
-        # #         # cv2.circle(img=im0,center=c2,radius=2,color=(255,255,255),thickness= 0) ###
-        # #         # cv2.circle(img=im0,center=c1,radius=2,color=(255,255,255),thickness= 0) ###
-        # print(processed_image.shape)
-        # print(yolo.shape)
-        # print(res.shape)
-
-        center_prev = copy.deepcopy(center_curr)
-        final_image = cv.hconcat([derotated_image,res])
-        # cv.imshow('final_image', final_image)
-        cv.imwrite(path + '/final_image/' + ('0' * (5-len(str(i)))) + str(i) + '.png', final_image)
-        cv.imwrite(path + '/res/' + ('0' * (5-len(str(i)))) + str(i) + '.png', res)
-
+            center_prev = copy.deepcopy(center_curr)
+            final_image = cv.hconcat([derotated_image,res])
+            # cv.imshow('final_image', final_image)
+            cv.imwrite(path + '/final_image/' + ('0' * (5-len(str(i)))) + str(i) + '.png', final_image)
+            cv.imwrite(path + '/res/' + ('0' * (5-len(str(i)))) + str(i) + '.png', res)
+        
+        except FileNotFoundError:
+            
+            print('object not detected in the current frame')
+            
         # cv.waitKey(1)
 
         l2_ref = float('inf')
@@ -246,18 +257,21 @@ def undistort(path:string):
 
         if len(np.nonzero(res)[1]):
             counter += 1
+            cv.imshow('reference image', ref_obj_image)
+            cv.imshow('derotated image', derotated_image)
+            cv.waitKey(0)
 
         if not len(np.nonzero(res)[1]):
             counter_black_screen += 1
-        
         
         # print('i'+'-----------' + str(i))
         # print(len(np.nonzero(res)[1]))
         # print('Counter'+ '-----------------' + str(counter))
         # print('black_screen_counter' + '--------------------'+ str(counter_black_screen))
-        cv.imshow('final_image'+ '  ' + str(i),final_image)
-        cv.waitKey(2000)
-        cv.destroyAllWindows()
+        # cv.imshow('final_image'+ '  ' + str(i),final_image)
+        # cv.waitKey(2000)
+        # cv.destroyAllWindows()
+        
         if counter_black_screen == 10 or counter == 0:
 
             get_info_from_frame (i, path, path)
@@ -266,36 +280,35 @@ def undistort(path:string):
             counter = 0
         
         # print(counter)
-        # black_pixels = (512*512-np.count_nonzero(derotated_image))/512**2
+        black_pixels = (512*512-np.count_nonzero(derotated_image))/512**2
         
-        # if black_pixels > 0.75:
+        if black_pixels > 0.75:
 
-        # # # if counter == 0:
-        #     print(str(i))
-        #     get_info_from_frame (i, path, path)
-        #     offset_mat = (np.linalg.inv(start_rot_mat) @ end_rot_mat).T
-        #     # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', undistorted)
-        #     # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', im0)
-        #     cv.imshow('derotated',undistorted)
-        #     cv.waitKey(1)
+        # # if counter == 0:
+            print(str(i))
+            get_info_from_frame (i, path, path)
+            offset_mat = (np.linalg.inv(start_rot_mat) @ end_rot_mat).T
+            # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', undistorted)
+            # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', im0)
+            # cv.imshow('derotated',undistorted)
+            # cv.waitKey(1)
         # else:
         #     cv.imshow('derotated',derotated_image)
         #     cv.waitKey(1)
-        #     # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', derotated_image)
-        # #     # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', im0)
+            # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', derotated_image)
+        #     # cv.imwrite(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png', im0)
 
         # cv.imshow(str(a-1),res)
         # cv.imshow('im_draw', im_draw)
         # cv.waitKey(0)
         # cv.destroyAllWindows()
         
-       
         i += 1
         a += 1
 
         # if i==10:
-        #     break
+        #     break     
 
 if __name__ == '__main__':
-    undistort('/home/tau/Desktop/monocular_data/dataset-corridor1_512_16')
+    undistort('/home/pradip/Desktop/Tau_constaint/monocular_data/dataset-corridor1_512_16')
     

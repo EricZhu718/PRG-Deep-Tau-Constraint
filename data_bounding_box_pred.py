@@ -480,13 +480,12 @@ def image_dataset():
   time_arr = []
   delta_accel_arr = []
 
-
   for i in range(20):    
 
-    image = cv2.imread('/home/tau/Desktop/monocular_data/dataset-corridor1_512_16/processed_images/undistorted_images/' + ('0' * (5 - len(str(i))) + str(i)) + '.png', 0)
+    image = cv2.imread('~/Desktop/Tau_constaint/monocular_data/monocular_data/dataset-corridor1_512_16/processed_images/undistorted_images/' + ('0' * (5 - len(str(i))) + str(i)) + '.png', 0)
     img_arr.append(np.array(image))
 
-  data = pd.read_csv('/home/tau/Desktop/monocular_data/dataset-corridor1_512_16/reference_frame_index_140/data.csv')
+  data = pd.read_csv('~/Desktop/Tau_constaint/monocular_data/monocular_data/dataset-corridor1_512_16/reference_frame_index_140/data.csv')
   accel_arr = np.array(data['z_accel'][:20])
   time_arr = np.array(data['time_stamp'][:20])
   delta_accel_arr = np.array(data['z_delta'][:20])

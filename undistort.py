@@ -25,8 +25,6 @@ from numpy import random
 
 import sys
 
-sys.path.append('yolov7')
-
 # from models.experimental import attempt_load
 # from utils.datasets import LoadStreams, LoadImages
 # from utils.general import check_img_size, check_requirements, check_imshow, non_max_suppression, apply_classifier, \
@@ -152,7 +150,7 @@ def undistort(path:string):
         img_name = '0' * (5-len(str(i))) + str(i)
 
         print('\nStarting yolo\n')
-        os.system('python3 yolov7/detect2.py \
+        os.system('python3 detect2.py \
                     --weights object_detector_weights/yolov7.pt \
                     --source ' + path + '/processed_images/derotated_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png' \
                     ' --imagename ' + img_name)

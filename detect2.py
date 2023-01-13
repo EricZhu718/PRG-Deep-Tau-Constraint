@@ -8,10 +8,13 @@ import torch
 import torch.backends.cudnn as cudnn
 from numpy import random
 
+import os
 import sys
 sys.path.append('yolov7')
 sys.path.append('yolov7/models')
 sys.path.append('yolov7/utils')
+
+from tqdm import tqdm
 
 from models.experimental import attempt_load
 from utils.datasets import LoadStreams, LoadImages
@@ -26,8 +29,6 @@ def detect(save_img=False):
     save_img = not opt.nosave and not source.endswith('.txt')  # save inference images
     webcam = source.isnumeric() or source.endswith('.txt') or source.lower().startswith(
         ('rtsp://', 'rtmp://', 'http://', 'https://'))
-    
-    img_name = opt.imagename
     
     # print('reched directories')
     # Directories
@@ -79,7 +80,7 @@ def detect(save_img=False):
 
     t0 = time.time()
     # print('entered into dataset for loop')
-    for path, img, im0s, vid_cap in dataset:
+    for path, img, im0s, vid_cap in tqdm(dataset):
         img = torch.from_numpy(img).to(device)
         img = img.half() if half else img.float()  # uint8 to fp16/32
         img /= 255.0  # 0 - 255 to 0.0 - 1.0
@@ -123,8 +124,8 @@ def detect(save_img=False):
             # # print('Hi')
             # print('det from yolo')
             # print(det)
-            # torch.save(det_copy,'/home/pradip/Desktop/Tau_constaint/det_tensor/' + img_name + '.pt')
-            torch.save(det_copy,'data/det_tensor/' + img_name + '.pt')
+            file_id = os.path.split(os.path.splitext(path)[0])[1]
+            torch.save(det_copy, 'data/det_tensor/' + file_id + '.pt')
 
             # if len(det):
             #     # Rescale boxes from img_size to im0 size
@@ -206,7 +207,6 @@ if __name__ == '__main__':
     parser.add_argument('--name', default='exp', help='save results to project/name')
     parser.add_argument('--exist-ok', action='store_true', help='existing project/name ok, do not increment')
     parser.add_argument('--no-trace', action='store_true', help='don`t trace model')
-    parser.add_argument('--imagename', type=str, help='image name')
     opt = parser.parse_args()
     print(opt)
     #check_requirements(exclude=('pycocotools', 'thop'))

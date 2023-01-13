@@ -150,13 +150,17 @@ def undistort(path:string):
         # cv.imshow('derotated_images',derotated_image)
         # cv.waitKey(10)
         img_name = '0' * (5-len(str(i))) + str(i)
-        os.system('python3 /home/pradip/Desktop/Tau_constaint/PRG-Deep-Tau-Constraint/yolov7/detect2.py \
-                    --weights /home/pradip/Desktop/Tau_constaint/PRG-Deep-Tau-Constraint/object_detector_weights/yolov7.pt \
-                    --source ' + path + '/processed_images/derotated_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png')
-                    # '--imagename' + img_name)
-        
-        processed_image = cv.imread(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
-        yolo = cv.imread('/home/pradip/Desktop/Tau_constaint/PRG-Deep-Tau-Constraint/runs/detect/exp/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
+
+        print('\nStarting yolo\n')
+        os.system('python3 yolov7/detect2.py \
+                    --weights object_detector_weights/yolov7.pt \
+                    --source ' + path + '/processed_images/derotated_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png' \
+                    ' --imagename ' + img_name)
+        print('\nDone with yolo\n')
+
+        # processed_image = cv.imread(path + '/processed_images/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
+        # yolo = cv.imread('/home/pradip/Desktop/Tau_constaint/PRG-Deep-Tau-Constraint/runs/detect/exp/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
+        # yolo = cv.imread('runs/detect/exp/' + ('0' * (5-len(str(i)))) + str(i) + '.png',0)
 
         # # print('det from undistort')
         # # print(det)
@@ -166,8 +170,8 @@ def undistort(path:string):
         im_draw = copy.deepcopy(derotated_image) 
         
         try : 
-            det = torch.load('/home/pradip/Desktop/Tau_constaint/det_tensor/' + img_name + '.pt', map_location=torch.device('cpu'))
-        
+            det = torch.load('data/det_tensor/' + img_name + '.pt', map_location=torch.device('cpu'))
+
             for *xyxy, conf, cls in reversed(det):
     
                 im0_copy = copy.deepcopy(derotated_image) 
@@ -259,7 +263,7 @@ def undistort(path:string):
             counter += 1
             cv.imshow('reference image', ref_obj_image)
             cv.imshow('derotated image', derotated_image)
-            cv.waitKey(0)
+            cv.waitKey(1)
 
         if not len(np.nonzero(res)[1]):
             counter_black_screen += 1
@@ -310,5 +314,4 @@ def undistort(path:string):
         #     break     
 
 if __name__ == '__main__':
-    undistort('/home/pradip/Desktop/Tau_constaint/monocular_data/dataset-corridor1_512_16')
-    
+    undistort('data/monocular_data/dataset-corridor1_512_16')
